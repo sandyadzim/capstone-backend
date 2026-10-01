@@ -36,4 +36,16 @@ describe('validateEnvironment', () => {
       validateEnvironment({ CORS_ORIGINS: 'https://frontend.example/app' }),
     ).toThrow('CORS_ORIGINS entries must be origin URLs');
   });
+
+  it('accepts PostgreSQL connection URLs and rejects other protocols', () => {
+    expect(
+      validateEnvironment({ DATABASE_URL: 'postgresql://localhost:5432/cp' }),
+    ).toMatchObject({
+      PORT: 3001,
+      DATABASE_URL: 'postgresql://localhost:5432/cp',
+    });
+    expect(() =>
+      validateEnvironment({ DATABASE_URL: 'https://db.example' }),
+    ).toThrow('DATABASE_URL must be a valid PostgreSQL URL');
+  });
 });

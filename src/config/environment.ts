@@ -15,6 +15,7 @@ const rawEnvironmentSchema = z.object({
     )
     .default(3001),
   CORS_ORIGINS: z.string().optional(),
+  DATABASE_URL: z.string().optional(),
 });
 
 export interface ApiEnvironment {
@@ -33,7 +34,7 @@ export function getApiEnvironment(config: ConfigService): ApiEnvironment {
 
 export function validateEnvironment(
   config: Record<string, unknown>,
-): ApiEnvironment {
+): ApiEnvironment & { DATABASE_URL?: string } {
   const parsed = rawEnvironmentSchema.safeParse(config);
   if (!parsed.success) {
     const issues = parsed.error.issues
@@ -45,6 +46,26 @@ export function validateEnvironment(
   }
 
   const { NODE_ENV, CORS_ORIGINS } = parsed.data;
+  const databaseUrl = parsed.data.DATABASE_URL?.trim();
+  if (databaseUrl) {
+    let parsedDatabaseUrl: URL;
+    try {
+      parsedDatabaseUrl = new URL(databaseUrl);
+    } catch {
+      throw new Error(
+        'Invalid environment configuration: DATABASE_URL must be a valid PostgreSQL URL',
+      );
+    }
+
+    if (
+      !['postgres:', 'postgresql:'].includes(parsedDatabaseUrl.protocol) ||
+      parsedDatabaseUrl.hostname.length === 0
+    ) {
+      throw new Error(
+        'Invalid environment configuration: DATABASE_URL must be a valid PostgreSQL URL',
+      );
+    }
+  }
   const configuredOrigins = CORS_ORIGINS?.split(',').map((origin) =>
     origin.trim(),
   );
@@ -90,7 +111,9 @@ export function validateEnvironment(
   });
 
   return {
-    ...parsed.data,
+    NODE_ENV: parsed.data.NODE_ENV,
+    PORT: parsed.data.PORT,
     CORS_ORIGINS: [...new Set(normalizedOrigins)],
+    ...(databaseUrl ? { DATABASE_URL: databaseUrl } : {}),
   };
 }

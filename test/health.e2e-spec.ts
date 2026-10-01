@@ -6,14 +6,21 @@ import type { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { configureHttpApplication } from './../src/configure-http-application.js';
 import { getApiEnvironment } from './../src/config/environment.js';
+import { DATABASE_CLIENT } from './../src/modules/database/database.module.js';
+import { DatabaseService } from './../src/modules/database/database.service.js';
 
 describe('Health endpoint (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: INestApplication<App> | undefined;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(DATABASE_CLIENT)
+      .useValue({})
+      .overrideProvider(DatabaseService)
+      .useValue({})
+      .compile();
 
     app = moduleFixture.createNestApplication();
     const config = app.get(ConfigService);
@@ -47,6 +54,6 @@ describe('Health endpoint (e2e)', () => {
   });
 
   afterEach(async () => {
-    await app.close();
+    await app?.close();
   });
 });
