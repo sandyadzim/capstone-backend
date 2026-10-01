@@ -2,6 +2,7 @@ import {
   boolean,
   check,
   index,
+  jsonb,
   numeric,
   pgTable,
   smallint,
@@ -80,6 +81,33 @@ export const users = pgTable(
     uniqueIndex('uk_users_login_lower').on(
       sql`lower(${table.loginIdentifier})`,
     ),
+  ],
+);
+
+export const sessions = pgTable(
+  'sessions',
+  {
+    id: varchar('id', { length: 64 }).primaryKey(),
+    // SessionStore accepts opaque user ids; the provider revalidates active users.
+    userId: text('user_id').notNull(),
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    expiresAt: timestamp('expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    lastActiveAt: timestamp('last_active_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    mfa: varchar('mfa', { length: 16 }).$type<'pending' | 'verified'>(),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+  },
+  (table) => [
+    index('ix_sessions_user_id').on(table.userId),
+    index('ix_sessions_expires_at').on(table.expiresAt),
   ],
 );
 
@@ -333,6 +361,7 @@ export const attachments = pgTable(
 export const schema = {
   properties,
   users,
+  sessions,
   units,
   damageReports,
   assignments,

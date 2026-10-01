@@ -48,6 +48,7 @@ describe('PostgreSQL schema and initial seed', () => {
       'damage_reports',
       'maintenance_results',
       'properties',
+      'sessions',
       'units',
       'users',
     ]);

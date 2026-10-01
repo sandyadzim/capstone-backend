@@ -18,6 +18,23 @@ bun run start:dev
 
 The API listens on `http://localhost:3001`; the health endpoint is `GET /api/health`.
 
+## Authentication
+
+Frontend integration details are documented in [docs/features/authentication.md](docs/features/authentication.md).
+
+The API uses database-backed cookie sessions. Apply pending migrations with `bun run db:migrate` before starting it. The initial Admin created by `bun run db:seed` can sign in at `POST /api/auth/login` with this JSON body:
+
+```json
+{
+  "loginIdentifier": "admin@example.test",
+  "password": "<the-seed-admin-password>"
+}
+```
+
+The response contains the account identity and role. The session token is sent only in the `HttpOnly`, `SameSite=Lax`, `Secure` cookie named `__Host-sid`; browser clients must send credentials with API requests. `GET /api/auth/me` returns the current account, and `POST /api/auth/logout` revokes the server-side session. Sessions expire after one day without activity and at most seven days after sign-in.
+
+`CORS_ORIGINS` is also the exact trusted-origin list for sign-in and CSRF protection. Add every frontend origin that needs to make credentialed requests; production origins should use HTTPS. The health endpoint and the login/logout routes are explicitly public. There is no self-registration endpoint.
+
 ## Environment
 
 | Variable | Default | Description |

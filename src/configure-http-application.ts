@@ -13,6 +13,7 @@ export function configureHttpApplication(
     origin: environment.CORS_ORIGINS,
     credentials: true,
   });
+  app.enableCsrfProtection({ trustedOrigins: environment.CORS_ORIGINS });
   app.use(requestLoggingMiddleware);
 }
 
