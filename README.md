@@ -21,6 +21,7 @@ The API listens on `http://localhost:3001`; the health endpoint is `GET /api/hea
 ## Authentication
 
 Frontend integration details are documented in [docs/features/authentication.md](docs/features/authentication.md).
+The shared response, error, enum, cookie, and CORS contracts are documented in [docs/api-contracts.md](docs/api-contracts.md); OpenAPI is available at `/api/docs` in development and test.
 
 The API uses database-backed cookie sessions. Apply pending migrations with `bun run db:migrate` before starting it. The initial Admin created by `bun run db:seed` can sign in at `POST /api/auth/login` with this JSON body:
 

@@ -2,6 +2,8 @@
 
 Panduan integrasi autentikasi untuk frontend CP. API menggunakan session cookie yang dikelola server dan disimpan di PostgreSQL. Frontend tidak menerima atau menyimpan access token di JavaScript.
 
+Format error konsisten dan daftar status dapat dilihat di [kontrak API](../api-contracts.md). OpenAPI interaktif lokal tersedia di `/api/docs`.
+
 ## Konfigurasi
 
 - Base URL lokal: `http://localhost:3001/api` (port dapat berubah melalui `PORT`).
@@ -63,7 +65,7 @@ const response = await apiFetch('/auth/login', {
 });
 
 if (response.status === 401) {
-  // Tampilkan pesan kredensial tidak valid.
+  // Tampilkan pesan kredensial tidak valid (code: UNAUTHORIZED).
 }
 
 if (!response.ok) {
@@ -86,7 +88,7 @@ Mengembalikan objek aktor dengan bentuk yang sama seperti respons login. Gunakan
 const response = await apiFetch('/auth/me');
 
 if (response.status === 401) {
-  // Anggap pengguna sebagai guest dan arahkan ke halaman login bila perlu.
+  // Anggap sebagai guest (code: UNAUTHORIZED) dan arahkan ke login bila perlu.
 } else if (!response.ok) {
   throw new Error('Tidak dapat memeriksa sesi');
 } else {

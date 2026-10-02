@@ -19,6 +19,7 @@ import { DatabaseService } from '../src/modules/database/database.service.js';
 import type { Database } from '../src/modules/database/database.service.js';
 import { seedInitialData } from '../src/modules/database/seed-initial-data.js';
 import { schema, sessions, users } from '../src/modules/database/schema.js';
+import { PasswordCredentialsService } from '../src/modules/auth-accounts/password-credentials.service.js';
 
 const loginIdentifier = 'admin@example.test';
 const password = 'test-only-admin-password';
@@ -158,9 +159,37 @@ describe('Authentication and sessions (e2e)', () => {
       .expect(401);
 
     expect(incorrectPassword.body).toEqual(unknownAccount.body);
-    expect(incorrectPassword.body.message).toBe(
-      'Invalid login identifier or password',
+    expect(incorrectPassword.body).toMatchObject({
+      statusCode: 401,
+      code: 'UNAUTHORIZED',
+      message: 'Authentication is required or credentials are invalid',
+    });
+  });
+
+  it('returns structured validation issues before authenticating credentials', async () => {
+    const authenticate = vi.spyOn(
+      app!.get(PasswordCredentialsService),
+      'authenticate',
     );
+    const response = await request(app!.getHttpServer())
+      .post('/api/auth/login')
+      .set('Origin', trustedOrigin)
+      .send({ loginIdentifier: '   ', password: '' })
+      .expect(400);
+
+    expect(response.body).toMatchObject({
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
+      message: 'Request validation failed',
+      details: {
+        issues: expect.arrayContaining([
+          expect.objectContaining({ path: ['loginIdentifier'] }),
+          expect.objectContaining({ path: ['password'] }),
+        ]),
+      },
+    });
+    expect(authenticate).not.toHaveBeenCalled();
+    authenticate.mockRestore();
   });
 
   it('invalidates an existing session when the account is deactivated', async () => {
@@ -201,11 +230,68 @@ describe('Authentication and sessions (e2e)', () => {
   });
 
   it('rejects sign-in requests from untrusted origins', async () => {
-    await request(app!.getHttpServer())
+    const response = await request(app!.getHttpServer())
       .post('/api/auth/login')
       .set('Origin', 'https://untrusted.example')
       .send({ loginIdentifier, password })
       .expect(403);
+
+    expect(response.body).toMatchObject({
+      statusCode: 403,
+      code: 'FORBIDDEN',
+    });
+  });
+
+  it('serves OpenAPI for implemented routes with request, response, and cookie contracts', async () => {
+    await request(app!.getHttpServer()).get('/api/docs').expect(200);
+
+    const response = await request(app!.getHttpServer())
+      .get('/api/docs-json')
+      .expect(200);
+    const document = response.body;
+    expect(Object.keys(document.paths).sort()).toEqual([
+      '/api/auth/login',
+      '/api/auth/logout',
+      '/api/auth/me',
+      '/api/health',
+    ]);
+
+    const loginOperation = document.paths['/api/auth/login'].post;
+    expect(JSON.stringify(loginOperation.requestBody)).toContain(
+      'loginIdentifier',
+    );
+    expect(JSON.stringify(loginOperation.requestBody)).toContain('password');
+    expect(loginOperation.responses['200']).toBeDefined();
+    expect(loginOperation.responses['200'].headers['Set-Cookie']).toBeDefined();
+    expect(loginOperation.responses['400']).toBeDefined();
+    expect(loginOperation.responses['401']).toBeDefined();
+    expect(loginOperation.responses['500']).toBeDefined();
+    expect(loginOperation.security ?? []).toEqual([]);
+
+    const meOperation = document.paths['/api/auth/me'].get;
+    expect(meOperation.responses['200']).toBeDefined();
+    expect(meOperation.responses['401']).toBeDefined();
+    expect(meOperation.responses['500']).toBeDefined();
+    const cookieSchemeName = Object.entries(
+      document.components.securitySchemes,
+    ).find(
+      ([, scheme]) =>
+        (scheme as { type?: string; in?: string; name?: string }).type ===
+          'apiKey' &&
+        (scheme as { type?: string; in?: string; name?: string }).in ===
+          'cookie' &&
+        (scheme as { type?: string; in?: string; name?: string }).name ===
+          '__Host-sid',
+    )?.[0];
+    expect(cookieSchemeName).toBeDefined();
+    expect(meOperation.security).toEqual([{ [cookieSchemeName!]: [] }]);
+
+    const logoutOperation = document.paths['/api/auth/logout'].post;
+    expect(
+      logoutOperation.responses['204'].headers['Set-Cookie'],
+    ).toBeDefined();
+    expect(logoutOperation.responses['500']).toBeDefined();
+    expect(document.paths['/api/health'].get.responses['500']).toBeDefined();
   });
 
   it('deletes the server session on logout', async () => {

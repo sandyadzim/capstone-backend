@@ -14,18 +14,32 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-export type UserRole = 'ADMIN' | 'TECHNICIAN' | 'RESIDENT';
-export type DamageCategory =
-  'AC' | 'ELECTRICAL' | 'PLUMBING' | 'FURNITURE' | 'BUILDING' | 'OTHER';
-export type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
-export type DamageReportStatus =
-  | 'REPORTED'
-  | 'VERIFIED'
-  | 'REJECTED'
-  | 'ASSIGNED'
-  | 'IN_PROGRESS'
-  | 'COMPLETED'
-  | 'CLOSED';
+export const USER_ROLES = ['ADMIN', 'TECHNICIAN', 'RESIDENT'] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
+export const DAMAGE_CATEGORIES = [
+  'AC',
+  'ELECTRICAL',
+  'PLUMBING',
+  'FURNITURE',
+  'BUILDING',
+  'OTHER',
+] as const;
+export type DamageCategory = (typeof DAMAGE_CATEGORIES)[number];
+
+export const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH'] as const;
+export type Priority = (typeof PRIORITIES)[number];
+
+export const DAMAGE_REPORT_STATUSES = [
+  'REPORTED',
+  'VERIFIED',
+  'REJECTED',
+  'ASSIGNED',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'CLOSED',
+] as const;
+export type DamageReportStatus = (typeof DAMAGE_REPORT_STATUSES)[number];
 export type CostItemType = 'SERVICE' | 'MATERIAL';
 export type AttachmentPurpose = 'DAMAGE_PHOTO' | 'REPAIR_PHOTO' | 'RECEIPT';
 

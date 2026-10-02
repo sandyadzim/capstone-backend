@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ApiExceptionFilter } from './common/http/api-exception.filter.js';
 import { AuthAccountsModule } from './modules/auth-accounts/auth-accounts.module.js';
 import { AttachmentsModule } from './modules/attachments/attachments.module.js';
 import { DashboardHistoryModule } from './modules/dashboard-history/dashboard-history.module.js';
@@ -25,5 +27,6 @@ import { validateEnvironment } from './config/environment.js';
     DashboardHistoryModule,
     DatabaseModule,
   ],
+  providers: [{ provide: APP_FILTER, useClass: ApiExceptionFilter }],
 })
 export class AppModule {}
