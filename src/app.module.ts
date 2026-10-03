@@ -8,7 +8,7 @@ import { DashboardHistoryModule } from './modules/dashboard-history/dashboard-hi
 import { DatabaseModule } from './modules/database/database.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { MaintenanceExecutionModule } from './modules/maintenance-execution/maintenance-execution.module.js';
-import { PropertyUnitsModule } from './modules/property-units/property-units.module.js';
+import { PropertyModule } from './modules/property/property.module.js';
 import { ReportsAssignmentModule } from './modules/reports-assignment/reports-assignment.module.js';
 import { validateEnvironment } from './config/environment.js';
 
@@ -20,7 +20,7 @@ import { validateEnvironment } from './config/environment.js';
     }),
     HealthModule,
     AuthAccountsModule,
-    PropertyUnitsModule,
+    PropertyModule,
     ReportsAssignmentModule,
     MaintenanceExecutionModule,
     AttachmentsModule,

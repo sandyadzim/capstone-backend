@@ -1,9 +1,8 @@
 import { sql } from 'drizzle-orm';
 import type { Database } from './database.service.js';
 import { properties, users } from './schema.js';
+import { INITIAL_PROPERTY_ID } from '../property/property.constants.js';
 import { normalizeLoginIdentifier } from './users.repository.js';
-
-const INITIAL_PROPERTY_ID = '11000000-0000-4000-8000-000000000001';
 
 export interface InitialSeedInput {
   propertyName: string;
