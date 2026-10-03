@@ -4,6 +4,7 @@ import { AuthenticationStorage } from '@nestjs/authentication';
 import type { SessionRecord, SessionStore } from '@nestjs/authentication';
 import { sessions } from '../database/schema.js';
 import { DatabaseService } from '../database/database.service.js';
+import type { DatabaseTransaction } from '../database/database.service.js';
 
 @Injectable()
 export class DrizzleSessionStore implements SessionStore {
@@ -63,8 +64,12 @@ export class DrizzleSessionStore implements SessionStore {
     return records.map((record) => this.toSessionRecord(record));
   }
 
-  async deleteUserSessions(userId: string): Promise<void> {
-    await this.database.db.delete(sessions).where(eq(sessions.userId, userId));
+  async deleteUserSessions(
+    userId: string,
+    transaction?: DatabaseTransaction,
+  ): Promise<void> {
+    const executor = transaction ?? this.database.db;
+    await executor.delete(sessions).where(eq(sessions.userId, userId));
   }
 
   private toSessionRecord(record: typeof sessions.$inferSelect): SessionRecord {

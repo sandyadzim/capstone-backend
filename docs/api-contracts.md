@@ -57,8 +57,13 @@ Status HTTP dan `code` dapat dipakai untuk alur aplikasi. `message` ditujukan un
 | `POST`   | `/api/units/:id/archive`  | ADMIN                                                     | `200`, unit diarsipkan                            |
 | `PUT`    | `/api/units/:id/resident` | ADMIN                                                     | `200`, unit tujuan dengan penghuni                |
 | `DELETE` | `/api/units/:id/resident` | ADMIN                                                     | `200`, unit setelah pelepasan                     |
+| `GET`    | `/api/accounts`           | ADMIN                                                     | `200`, `{ data, meta }` daftar akun               |
+| `POST`   | `/api/accounts`           | ADMIN                                                     | `201`, akun dibuat                                |
+| `GET`    | `/api/accounts/:id`       | ADMIN                                                     | `200`, detail akun                                |
+| `PATCH`  | `/api/accounts/:id`       | ADMIN                                                     | `200`, akun diperbarui                             |
+| `POST`   | `/api/accounts/:id/deactivate` | ADMIN                                                | `200`, akun dinonaktifkan                         |
 
-Detail profil ada di [panduan property](features/property.md); payload unit, status hunian, penempatan, dan arsip ada di [panduan unit](features/units.md). Mutasi memakai body strict, PATCH minimal satu field, dan parameter unit UUID. Profil hanya menerima `logoUrl: null` untuk penghapusan; unggah/ganti logo ditambahkan BE-11.
+Detail profil ada di [panduan property](features/property.md); payload unit, status hunian, penempatan, dan arsip ada di [panduan unit](features/units.md); akun dan peran ada di [panduan akun](features/accounts.md). Mutasi memakai body strict; PATCH akun/unit minimal satu field. Profil hanya menerima `logoUrl: null` untuk penghapusan; unggah/ganti logo ditambahkan BE-11.
 
 Detail payload auth dan contoh pemakaian browser ada di [panduan autentikasi](features/authentication.md). Login gagal memakai `401 UNAUTHORIZED` dengan pesan generik, baik identifier tidak dikenal maupun password salah. Input login invalid memakai `400 VALIDATION_ERROR`.
 
@@ -88,3 +93,5 @@ Status tampilan unit dihitung dari maintenance flag dan relasi RESIDENT aktif: `
 `GET /api/units` menerima `page` (default 1), `pageSize` (default 20, maksimum 100), serta `isArchived` (tepat string `true`/`false`, default `false`). Integer harus positif, berupa digit, dan menghasilkan offset dalam rentang integer aman JavaScript. Query tambahan atau berulang ditolak. Respons adalah `{ data, meta: { page, pageSize, total, totalPages } }`; halaman melampaui hasil mengembalikan daftar kosong. Urutan: `unitNumber ASC`, lalu `id ASC`. Filter arsip memilih hanya unit dengan nilai arsip tersebut pada properti Phase 1.
 
 Format pagination, batas, urutan hasil, pencarian, dan filter **laporan** akan ditetapkan dan didokumentasikan pada BE-14 bersamaan dengan implementasi daftar laporan.
+
+`GET /api/accounts` menerima `page` (default 1), `pageSize` (default 20, maksimum 100), serta filter opsional `role` dan `isActive` (tepat string `true`/`false`). Tanpa filter status, akun aktif dan nonaktif disertakan. Respons `{ data, meta }`, urutan `name ASC` lalu `id ASC`; halaman di luar hasil kosong. Gunakan `role=TECHNICIAN&isActive=true` untuk daftar teknisi aktif.

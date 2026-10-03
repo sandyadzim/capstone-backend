@@ -250,6 +250,9 @@ describe('Authentication and sessions (e2e)', () => {
       .expect(200);
     const document = response.body;
     expect(Object.keys(document.paths).sort()).toEqual([
+      '/api/accounts',
+      '/api/accounts/{id}',
+      '/api/accounts/{id}/deactivate',
       '/api/auth/login',
       '/api/auth/logout',
       '/api/auth/me',

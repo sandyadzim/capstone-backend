@@ -12,6 +12,14 @@ export class PasswordCredentialsService implements OnModuleInit {
 
   constructor(private readonly users: UsersRepository) {}
 
+  hash(password: string): Promise<string> {
+    return argon2.hash(password, {
+      type: argon2.argon2id,
+      memoryCost: 19_456,
+      timeCost: 2,
+    });
+  }
+
   async onModuleInit(): Promise<void> {
     this.dummyPasswordHash = await argon2.hash(
       randomBytes(32).toString('base64url'),

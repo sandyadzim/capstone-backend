@@ -8,10 +8,15 @@ import { PasswordCredentialsService } from './password-credentials.service.js';
 import { AccountSessionProvider } from './session-cookie.provider.js';
 import { RolesGuard } from './roles.guard.js';
 import { PersistentSessionStoreCheck } from './persistent-session-store.check.js';
+import { AccountsController } from './accounts.controller.js';
+import { AccountsRepository } from './accounts.repository.js';
+import { AccountsService } from './accounts.service.js';
+import { UnitsModule } from '../units/units.module.js';
 
 @Global()
 @Module({
   imports: [
+    UnitsModule,
     AuthenticationModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -28,13 +33,15 @@ import { PersistentSessionStoreCheck } from './persistent-session-store.check.js
       }),
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, AccountsController],
   providers: [
     DrizzleSessionStore,
     AccountSessionProvider,
     PasswordCredentialsService,
     RolesGuard,
     PersistentSessionStoreCheck,
+    AccountsRepository,
+    AccountsService,
   ],
   exports: [RolesGuard],
 })

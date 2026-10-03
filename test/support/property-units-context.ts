@@ -21,6 +21,7 @@ import {
   properties,
   units,
   users,
+  assignments,
   damageReports,
 } from '../../src/modules/database/schema.js';
 import type {
@@ -164,6 +165,7 @@ export function usePropertyUnitsContext() {
   });
 
   beforeEach(async () => {
+    await db.delete(assignments);
     await db.delete(damageReports);
     await db.delete(units);
     await db.delete(properties).where(eq(properties.id, ids.otherPropertyId));
