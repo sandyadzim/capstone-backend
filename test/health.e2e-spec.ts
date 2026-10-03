@@ -10,7 +10,7 @@ import { DATABASE_CLIENT } from './../src/modules/database/database.module.js';
 import { DatabaseService } from './../src/modules/database/database.service.js';
 
 describe('Health endpoint (e2e)', () => {
-  let app: INestApplication<App> | undefined;
+  let app: INestApplication<App>;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

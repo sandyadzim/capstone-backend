@@ -42,19 +42,21 @@ Frontend integration for the property profile is documented in [docs/features/pr
 
 Account administration, password changes, active Technician filtering, and account-to-unit placement are documented in [docs/features/accounts.md](docs/features/accounts.md). All account routes require Admin; passwords are stored as Argon2id hashes and never included in responses.
 
+Report creation, role-scoped listing/detail, pagination, and the optional photo upload handoff are documented in [docs/features/reports.md](docs/features/reports.md). Every report route requires a session; create is available to Admin and Resident, while list/detail results are scoped to the actor.
+
 ## Environment
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `NODE_ENV` | `development` | `development`, `test`, or `production`. |
-| `PORT` | `3001` | HTTP port, from 1 to 65535. |
-| `CORS_ORIGINS` | `http://localhost:5173` outside production | Comma-separated exact HTTP(S) origins. Required in production. |
-| `DATABASE_URL` | — | PostgreSQL connection URL. Required to start the API and run database commands. |
-| `SEED_PROPERTY_NAME` | — | Initial property name used only by `db:seed`. |
-| `SEED_PROPERTY_ADDRESS` | — | Initial property address used only by `db:seed`. |
-| `SEED_ADMIN_NAME` | — | Initial Admin display name used only by `db:seed`. |
-| `SEED_ADMIN_LOGIN_IDENTIFIER` | — | Initial Admin login, normalized to lowercase. |
-| `SEED_ADMIN_PASSWORD` | — | Initial Admin password, at least 12 characters; stored as an Argon2id hash. |
+| Variable                      | Default                                    | Description                                                                     |
+| ----------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
+| `NODE_ENV`                    | `development`                              | `development`, `test`, or `production`.                                         |
+| `PORT`                        | `3001`                                     | HTTP port, from 1 to 65535.                                                     |
+| `CORS_ORIGINS`                | `http://localhost:5173` outside production | Comma-separated exact HTTP(S) origins. Required in production.                  |
+| `DATABASE_URL`                | —                                          | PostgreSQL connection URL. Required to start the API and run database commands. |
+| `SEED_PROPERTY_NAME`          | —                                          | Initial property name used only by `db:seed`.                                   |
+| `SEED_PROPERTY_ADDRESS`       | —                                          | Initial property address used only by `db:seed`.                                |
+| `SEED_ADMIN_NAME`             | —                                          | Initial Admin display name used only by `db:seed`.                              |
+| `SEED_ADMIN_LOGIN_IDENTIFIER` | —                                          | Initial Admin login, normalized to lowercase.                                   |
+| `SEED_ADMIN_PASSWORD`         | —                                          | Initial Admin password, at least 12 characters; stored as an Argon2id hash.     |
 
 CORS allows credentials for session cookies and only returns access headers to configured origins. Do not use `*` with credentialed requests.
 

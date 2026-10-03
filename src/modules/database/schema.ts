@@ -5,6 +5,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  pgSequence,
   smallint,
   text,
   timestamp,
@@ -42,6 +43,11 @@ export const DAMAGE_REPORT_STATUSES = [
 export type DamageReportStatus = (typeof DAMAGE_REPORT_STATUSES)[number];
 export type CostItemType = 'SERVICE' | 'MATERIAL';
 export type AttachmentPurpose = 'DAMAGE_PHOTO' | 'REPAIR_PHOTO' | 'RECEIPT';
+
+export const damageReportNumberSequence = pgSequence(
+  'damage_report_number_seq',
+  { startWith: 1, maxValue: '9223372036854775807', cycle: false },
+);
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })

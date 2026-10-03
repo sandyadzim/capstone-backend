@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -22,6 +23,7 @@ import {
   units,
   users,
   assignments,
+  attachments,
   damageReports,
 } from '../../src/modules/database/schema.js';
 import type {
@@ -91,7 +93,7 @@ export function usePropertyUnitsContext() {
         .insert(damageReports)
         .values({
           unitId,
-          reportNumber: `REPORT-${status}`,
+          reportNumber: `R-${randomUUID().replaceAll('-', '').slice(0, 30)}`,
           title: 'Test damage',
           description: 'Test description',
           category: 'OTHER',
@@ -149,7 +151,7 @@ export function usePropertyUnitsContext() {
         transaction: database.transaction.bind(database),
       })
       .compile();
-    app = fixture.createNestApplication<App>();
+    app = fixture.createNestApplication<INestApplication<App>>();
     configureHttpApplication(app, getApiEnvironment(app.get(ConfigService)));
     await app.init();
     for (const role of ['ADMIN', 'TECHNICIAN', 'RESIDENT'] as const) {
@@ -166,6 +168,7 @@ export function usePropertyUnitsContext() {
 
   beforeEach(async () => {
     await db.delete(assignments);
+    await db.delete(attachments);
     await db.delete(damageReports);
     await db.delete(units);
     await db.delete(properties).where(eq(properties.id, ids.otherPropertyId));

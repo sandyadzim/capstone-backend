@@ -42,30 +42,35 @@ Status HTTP dan `code` dapat dipakai untuk alur aplikasi. `message` ditujukan un
 
 ## Route aktif
 
-| Method   | Path                      | Akses                                                     | Sukses                                            |
-| -------- | ------------------------- | --------------------------------------------------------- | ------------------------------------------------- |
-| `POST`   | `/api/auth/login`         | Publik; memerlukan origin tepercaya untuk request browser | `200`, aktor dikembalikan dan cookie sesi disetel |
-| `GET`    | `/api/auth/me`            | Session cookie                                            | `200`, aktor aktif                                |
-| `POST`   | `/api/auth/logout`        | Publik; menghapus sesi saat tersedia                      | `204`                                             |
-| `GET`    | `/api/health`             | Publik                                                    | `200`, `{ "status": "ok" }`                       |
-| `GET`    | `/api/property`           | Semua role dengan sesi                                    | `200`, profil                                     |
-| `PATCH`  | `/api/property`           | ADMIN                                                     | `200`, profil diperbarui                          |
-| `GET`    | `/api/units`              | ADMIN                                                     | `200`, `{ data, meta }`                           |
-| `POST`   | `/api/units`              | ADMIN                                                     | `201`, unit                                       |
-| `GET`    | `/api/units/:id`          | ADMIN                                                     | `200`, detail unit                                |
-| `PATCH`  | `/api/units/:id`          | ADMIN                                                     | `200`, unit diperbarui                            |
-| `POST`   | `/api/units/:id/archive`  | ADMIN                                                     | `200`, unit diarsipkan                            |
-| `PUT`    | `/api/units/:id/resident` | ADMIN                                                     | `200`, unit tujuan dengan penghuni                |
-| `DELETE` | `/api/units/:id/resident` | ADMIN                                                     | `200`, unit setelah pelepasan                     |
-| `GET`    | `/api/accounts`           | ADMIN                                                     | `200`, `{ data, meta }` daftar akun               |
-| `POST`   | `/api/accounts`           | ADMIN                                                     | `201`, akun dibuat                                |
-| `GET`    | `/api/accounts/:id`       | ADMIN                                                     | `200`, detail akun                                |
-| `PATCH`  | `/api/accounts/:id`       | ADMIN                                                     | `200`, akun diperbarui                             |
-| `POST`   | `/api/accounts/:id/deactivate` | ADMIN                                                | `200`, akun dinonaktifkan                         |
+| Method   | Path                           | Akses                                                     | Sukses                                            |
+| -------- | ------------------------------ | --------------------------------------------------------- | ------------------------------------------------- |
+| `POST`   | `/api/auth/login`              | Publik; memerlukan origin tepercaya untuk request browser | `200`, aktor dikembalikan dan cookie sesi disetel |
+| `GET`    | `/api/auth/me`                 | Session cookie                                            | `200`, aktor aktif                                |
+| `POST`   | `/api/auth/logout`             | Publik; menghapus sesi saat tersedia                      | `204`                                             |
+| `GET`    | `/api/health`                  | Publik                                                    | `200`, `{ "status": "ok" }`                       |
+| `GET`    | `/api/property`                | Semua role dengan sesi                                    | `200`, profil                                     |
+| `PATCH`  | `/api/property`                | ADMIN                                                     | `200`, profil diperbarui                          |
+| `GET`    | `/api/units`                   | ADMIN                                                     | `200`, `{ data, meta }`                           |
+| `POST`   | `/api/units`                   | ADMIN                                                     | `201`, unit                                       |
+| `GET`    | `/api/units/:id`               | ADMIN                                                     | `200`, detail unit                                |
+| `PATCH`  | `/api/units/:id`               | ADMIN                                                     | `200`, unit diperbarui                            |
+| `POST`   | `/api/units/:id/archive`       | ADMIN                                                     | `200`, unit diarsipkan                            |
+| `PUT`    | `/api/units/:id/resident`      | ADMIN                                                     | `200`, unit tujuan dengan penghuni                |
+| `DELETE` | `/api/units/:id/resident`      | ADMIN                                                     | `200`, unit setelah pelepasan                     |
+| `GET`    | `/api/accounts`                | ADMIN                                                     | `200`, `{ data, meta }` daftar akun               |
+| `POST`   | `/api/accounts`                | ADMIN                                                     | `201`, akun dibuat                                |
+| `GET`    | `/api/accounts/:id`            | ADMIN                                                     | `200`, detail akun                                |
+| `PATCH`  | `/api/accounts/:id`            | ADMIN                                                     | `200`, akun diperbarui                            |
+| `POST`   | `/api/accounts/:id/deactivate` | ADMIN                                                     | `200`, akun dinonaktifkan                         |
+| `GET`    | `/api/reports`                 | Session; data dibatasi menurut role                       | `200`, `{ data, meta }` daftar laporan            |
+| `POST`   | `/api/reports`                 | ADMIN, RESIDENT                                           | `201`, laporan dibuat                             |
+| `GET`    | `/api/reports/:id`             | Session; laporan harus berada dalam cakupan aktor         | `200`, detail laporan                             |
 
 Detail profil ada di [panduan property](features/property.md); payload unit, status hunian, penempatan, dan arsip ada di [panduan unit](features/units.md); akun dan peran ada di [panduan akun](features/accounts.md). Mutasi memakai body strict; PATCH akun/unit minimal satu field. Profil hanya menerima `logoUrl: null` untuk penghapusan; unggah/ganti logo ditambahkan BE-11.
 
 Detail payload auth dan contoh pemakaian browser ada di [panduan autentikasi](features/authentication.md). Login gagal memakai `401 UNAUTHORIZED` dengan pesan generik, baik identifier tidak dikenal maupun password salah. Input login invalid memakai `400 VALIDATION_ERROR`.
+
+Create, detail, pagination laporan, pembatasan akses per role, dan bentuk respons tersedia di [panduan laporan](features/reports.md). Nomor laporan dialokasikan backend dari sequence PostgreSQL.
 
 ## Enum domain
 
@@ -92,6 +97,6 @@ Status tampilan unit dihitung dari maintenance flag dan relasi RESIDENT aktif: `
 
 `GET /api/units` menerima `page` (default 1), `pageSize` (default 20, maksimum 100), serta `isArchived` (tepat string `true`/`false`, default `false`). Integer harus positif, berupa digit, dan menghasilkan offset dalam rentang integer aman JavaScript. Query tambahan atau berulang ditolak. Respons adalah `{ data, meta: { page, pageSize, total, totalPages } }`; halaman melampaui hasil mengembalikan daftar kosong. Urutan: `unitNumber ASC`, lalu `id ASC`. Filter arsip memilih hanya unit dengan nilai arsip tersebut pada properti Phase 1.
 
-Format pagination, batas, urutan hasil, pencarian, dan filter **laporan** akan ditetapkan dan didokumentasikan pada BE-14 bersamaan dengan implementasi daftar laporan.
+Pagination laporan mengikuti parameter dan bentuk meta akun/unit (`page` default 1, `pageSize` default 20/maksimum 100), mengurutkan `reportedAt DESC` lalu `id DESC`. Pencarian serta filter laporan ditambahkan pada BE-14.
 
 `GET /api/accounts` menerima `page` (default 1), `pageSize` (default 20, maksimum 100), serta filter opsional `role` dan `isActive` (tepat string `true`/`false`). Tanpa filter status, akun aktif dan nonaktif disertakan. Respons `{ data, meta }`, urutan `name ASC` lalu `id ASC`; halaman di luar hasil kosong. Gunakan `role=TECHNICIAN&isActive=true` untuk daftar teknisi aktif.

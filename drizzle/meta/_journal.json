@@ -15,6 +15,13 @@
       "when": 1790860155767,
       "tag": "0001_auth_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791036979935,
+      "tag": "0002_damage_report_number_sequence",
+      "breakpoints": true
     }
   ]
 }

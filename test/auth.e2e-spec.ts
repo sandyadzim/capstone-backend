@@ -41,7 +41,8 @@ describe('Authentication and sessions (e2e)', () => {
       .useValue({ db: database })
       .compile();
 
-    const application = moduleFixture.createNestApplication<App>();
+    const application =
+      moduleFixture.createNestApplication<INestApplication<App>>();
     const config = application.get(ConfigService);
     configureHttpApplication(application, getApiEnvironment(config));
     await application.init();
@@ -258,6 +259,8 @@ describe('Authentication and sessions (e2e)', () => {
       '/api/auth/me',
       '/api/health',
       '/api/property',
+      '/api/reports',
+      '/api/reports/{id}',
       '/api/units',
       '/api/units/{id}',
       '/api/units/{id}/archive',
@@ -300,6 +303,19 @@ describe('Authentication and sessions (e2e)', () => {
     ).toBeDefined();
     expect(logoutOperation.responses['500']).toBeDefined();
     expect(document.paths['/api/health'].get.responses['500']).toBeDefined();
+
+    const reports = document.paths['/api/reports'];
+    expect(reports.get.responses['200']).toBeDefined();
+    expect(
+      reports.get.parameters.map((item: { name: string }) => item.name),
+    ).toEqual(expect.arrayContaining(['page', 'pageSize']));
+    expect(reports.post.responses['201']).toBeDefined();
+    expect(JSON.stringify(reports.post.requestBody)).toContain('unitId');
+    expect(JSON.stringify(reports.post.requestBody)).toContain('priority');
+    expect(reports.post.security).toEqual([{ [cookieSchemeName!]: [] }]);
+    expect(
+      document.paths['/api/reports/{id}'].get.responses['404'],
+    ).toBeDefined();
   });
 
   it('deletes the server session on logout', async () => {

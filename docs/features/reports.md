@@ -1,0 +1,63 @@
+# Laporan kerusakan
+
+Semua route laporan memerlukan session cookie `__Host-sid`. Frontend harus mengirim request browser dengan `credentials: 'include'`. Aktor diambil dari sesi backend; body tidak boleh mengirim status atau identitas pelapor.
+
+## Membuat laporan
+
+`POST /api/reports` menerima body berikut:
+
+```json
+{
+  "unitId": "11000000-0000-4000-8000-000000000001",
+  "title": "AC tidak dingin",
+  "description": "AC menyala tetapi tidak mengeluarkan udara dingin.",
+  "category": "AC",
+  "priority": "MEDIUM"
+}
+```
+
+Kategori: `AC`, `ELECTRICAL`, `PLUMBING`, `FURNITURE`, `BUILDING`, `OTHER`. Prioritas: `LOW`, `MEDIUM`, `HIGH`. Judul dipangkas dan maksimal 160 karakter; deskripsi serta judul wajib berisi teks. Field tambahan ditolak.
+
+Resident hanya dapat memilih unit non-arsip yang sedang ditempatinya. Status awal menjadi `REPORTED`, prioritas disimpan sebagai `proposedPriority`, sedangkan `finalPriority` bernilai `null`. Admin dapat memilih unit non-arsip di properti yang dikonfigurasi, termasuk unit kosong; status awal menjadi `VERIFIED` dan prioritas menjadi `finalPriority`. Technician menerima `403`.
+
+Respons sukses `201` mengembalikan detail laporan. Nomor laporan dibuat backend dengan format `RPT-0000000001`. Upload foto adalah langkah terpisah setelah laporan tercipta melalui BE-11. Kirim URL file lewat alur upload yang disediakan; jangan mengirimnya pada body create. Detail laporan memuat foto ber-tujuan `DAMAGE_PHOTO` yang sudah tersimpan.
+
+## Daftar dan detail
+
+`GET /api/reports` mendukung pagination:
+
+| Query      | Default | Batas                              |
+| ---------- | ------- | ---------------------------------- |
+| `page`     | `1`     | integer positif dengan offset aman |
+| `pageSize` | `20`    | `1` sampai `100`                   |
+
+Respons berbentuk `{ "data": [...], "meta": { "page": 1, "pageSize": 20, "total": 0, "totalPages": 0 } }`. Urutan adalah `reportedAt` terbaru, lalu ID terbaru. Halaman di luar hasil mengembalikan `data: []`. Query yang tidak dikenal, berulang, atau invalid ditolak dengan `400 VALIDATION_ERROR`.
+
+Admin melihat semua laporan properti Phase 1, Resident melihat laporan unit yang ditempatinya saat ini, dan Technician melihat laporan yang ditugaskan kepadanya. Pencarian dan filter ditambahkan pada BE-14.
+
+`GET /api/reports/:id` menggunakan cakupan yang sama. Laporan yang tidak ditemukan dan laporan di luar cakupan sama-sama menghasilkan `404 NOT_FOUND`. Detail memuat unit, deskripsi, status/prioritas, foto, dan assignment beserta estimasi bila tersedia. Respons Admin turut memuat identitas pembuat/pelapor/reviewer/closer dan pemberi assignment. Respons Resident dan Technician tidak memuat identitas audit tersebut atau pemberi assignment.
+
+## Contoh frontend
+
+```ts
+const created = await fetch('/api/reports', {
+  method: 'POST',
+  credentials: 'include',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    unitId,
+    title,
+    description,
+    category: 'AC',
+    priority: 'MEDIUM',
+  }),
+});
+
+if (!created.ok) {
+  // Tangani envelope API bersama; gunakan details.issues untuk error field.
+  throw await created.json();
+}
+
+const report = await created.json();
+// Gunakan report.id untuk langkah upload foto opsional BE-11.
+```

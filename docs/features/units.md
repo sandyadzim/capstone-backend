@@ -180,11 +180,4 @@ bun run test:e2e
 bun run lint
 ```
 
-Uji HTTP memakai PGlite dan migrasi asli. Untuk memeriksa row lock dengan dua koneksi PostgreSQL nyata:
-
-```sh
-TEST_DATABASE_URL='postgresql://<user>:<password>@localhost:5432/<database>' \
-  bun run test:e2e test/units-postgres.e2e-spec.ts
-```
-
-Akun database pengujian perlu izin membuat schema. Suite membuat schema acak `be06_test_*`, mengarahkan tabel, foreign key, dan trigger ke schema itu, lalu menghapusnya saat selesai. Suite PostgreSQL dilewati jika `TEST_DATABASE_URL` tidak disetel. Gunakan database pengembangan/pengujian; jika proses dihentikan paksa, schema sementara mungkin perlu dibersihkan manual.
+Uji HTTP memakai PGlite dan migrasi asli, sehingga pengujian tidak memerlukan koneksi database eksternal.
