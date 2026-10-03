@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import {
   assignments,
   attachments,
@@ -235,5 +235,284 @@ describe('Reports API (e2e)', () => {
     expect(
       (await ctx.api('get', '/api/reports?page=3&pageSize=1')).body.data,
     ).toEqual([]);
+  });
+
+  it('verifies a Resident report, records the reviewer and keeps review notes private', async () => {
+    const unit = await ctx.createUnit('R-01', {
+      activeResidentUserId: ctx.ids.actorIds.RESIDENT,
+    });
+    const created = await ctx
+      .api('post', '/api/reports', 'RESIDENT')
+      .send(payload(unit.id))
+      .expect(201);
+
+    const verified = await ctx
+      .api('post', `/api/reports/${created.body.id}/verify`)
+      .send({ finalPriority: 'HIGH', reviewNote: '  Checked the photos.  ' })
+      .expect(200);
+    expect(verified.body).toMatchObject({
+      id: created.body.id,
+      proposedPriority: 'MEDIUM',
+      finalPriority: 'HIGH',
+      status: 'VERIFIED',
+      rejectionReason: null,
+      reviewNote: 'Checked the photos.',
+      reviewedBy: { id: ctx.ids.actorIds.ADMIN, name: 'ADMIN' },
+    });
+
+    const [record] = await ctx.db
+      .select()
+      .from(damageReports)
+      .where(eq(damageReports.id, created.body.id));
+    expect(record).toMatchObject({
+      finalPriority: 'HIGH',
+      status: 'VERIFIED',
+      reviewNote: 'Checked the photos.',
+      reviewedByUserId: ctx.ids.actorIds.ADMIN,
+      rejectionReason: null,
+    });
+    const residentDetail = await ctx
+      .api('get', `/api/reports/${created.body.id}`, 'RESIDENT')
+      .expect(200);
+    expect(residentDetail.body).toMatchObject({
+      finalPriority: 'HIGH',
+      status: 'VERIFIED',
+    });
+    expect(residentDetail.body).not.toHaveProperty('reviewNote');
+    expect(residentDetail.body).not.toHaveProperty('reviewedBy');
+
+    const listed = await ctx.api('get', '/api/reports').expect(200);
+    expect(listed.body.data).toContainEqual(
+      expect.objectContaining({
+        id: created.body.id,
+        finalPriority: 'HIGH',
+        status: 'VERIFIED',
+      }),
+    );
+  });
+
+  it('rejects a Resident report and exposes the reason, not the internal note, to the Resident', async () => {
+    const unit = await ctx.createUnit('R-02', {
+      activeResidentUserId: ctx.ids.actorIds.RESIDENT,
+    });
+    const created = await ctx
+      .api('post', '/api/reports', 'RESIDENT')
+      .send(payload(unit.id))
+      .expect(201);
+
+    const rejected = await ctx
+      .api('post', `/api/reports/${created.body.id}/reject`)
+      .send({
+        finalPriority: 'LOW',
+        rejectionReason: '  Duplicate submission.  ',
+        reviewNote: '  Confirmed against the existing ticket.  ',
+      })
+      .expect(200);
+    expect(rejected.body).toMatchObject({
+      finalPriority: 'LOW',
+      status: 'REJECTED',
+      rejectionReason: 'Duplicate submission.',
+      reviewNote: 'Confirmed against the existing ticket.',
+      reviewedBy: { id: ctx.ids.actorIds.ADMIN, name: 'ADMIN' },
+    });
+    const [record] = await ctx.db
+      .select()
+      .from(damageReports)
+      .where(eq(damageReports.id, created.body.id));
+    expect(record).toMatchObject({
+      finalPriority: 'LOW',
+      status: 'REJECTED',
+      rejectionReason: 'Duplicate submission.',
+      reviewNote: 'Confirmed against the existing ticket.',
+      reviewedByUserId: ctx.ids.actorIds.ADMIN,
+    });
+
+    const residentDetail = await ctx
+      .api('get', `/api/reports/${created.body.id}`, 'RESIDENT')
+      .expect(200);
+    expect(residentDetail.body).toMatchObject({
+      finalPriority: 'LOW',
+      status: 'REJECTED',
+      rejectionReason: 'Duplicate submission.',
+    });
+    expect(residentDetail.body).not.toHaveProperty('reviewNote');
+    expect(residentDetail.body).not.toHaveProperty('reviewedBy');
+  });
+
+  it('validates review access and hides reports outside the Phase 1 property', async () => {
+    const unit = await ctx.createUnit('R-03');
+    const report = await ctx.addReport(unit.id);
+    const verifyPath = `/api/reports/${report.id}/verify`;
+    const validBody = { finalPriority: 'HIGH' };
+
+    await ctx.api('post', verifyPath, null).send(validBody).expect(401);
+    await ctx.api('post', verifyPath, 'RESIDENT').send(validBody).expect(403);
+    await ctx.api('post', verifyPath, 'TECHNICIAN').send(validBody).expect(403);
+    await ctx
+      .api('post', '/api/reports/not-a-uuid/verify')
+      .send(validBody)
+      .expect(400);
+    await ctx
+      .api('post', verifyPath)
+      .send({ ...validBody, status: 'VERIFIED' })
+      .expect(400);
+    await ctx
+      .api('post', `/api/reports/${report.id}/reject`)
+      .send({ finalPriority: 'HIGH', rejectionReason: '  ' })
+      .expect(400);
+    await ctx
+      .api('post', `/api/reports/${report.id}/reject`)
+      .send({
+        finalPriority: 'MEDIUM',
+        rejectionReason: 'Valid',
+        reviewNote: null,
+      })
+      .expect(400);
+
+    await ctx.db
+      .insert(properties)
+      .values({ id: ctx.ids.otherPropertyId, name: 'Other', address: 'Other' });
+    const foreignUnit = await ctx.createUnit('R-04', {
+      propertyId: ctx.ids.otherPropertyId,
+    });
+    const foreignReport = await ctx.addReport(foreignUnit.id);
+    await ctx
+      .api('post', `/api/reports/${foreignReport.id}/verify`)
+      .send(validBody)
+      .expect(404);
+    await ctx
+      .api('post', `/api/reports/${ctx.ids.missingId}/verify`)
+      .send(validBody)
+      .expect(404);
+  });
+
+  it('returns conflict for every report that is no longer REPORTED without changing its record', async () => {
+    const unit = await ctx.createUnit('R-05');
+    const adminCreated = await ctx
+      .api('post', '/api/reports')
+      .send(payload(unit.id, 'Already verified by Admin'))
+      .expect(201);
+    const idsByStatus: Array<[string, string]> = [
+      [adminCreated.body.id, 'VERIFIED'],
+    ];
+    for (const status of [
+      'REJECTED',
+      'ASSIGNED',
+      'IN_PROGRESS',
+      'COMPLETED',
+      'CLOSED',
+    ] as const) {
+      const report = await ctx.addReport(unit.id, status);
+      idsByStatus.push([report.id, status]);
+    }
+
+    for (const [id, status] of idsByStatus) {
+      const [before] = await ctx.db
+        .select()
+        .from(damageReports)
+        .where(eq(damageReports.id, id));
+      for (const [decision, body] of [
+        ['verify', { finalPriority: 'HIGH' }],
+        [
+          'reject',
+          { finalPriority: 'HIGH', rejectionReason: 'Duplicate report' },
+        ],
+      ] as const) {
+        const response = await ctx
+          .api('post', `/api/reports/${id}/${decision}`)
+          .send(body)
+          .expect(409);
+        expect(response.body).toMatchObject({
+          code: 'CONFLICT',
+          message: expect.stringContaining(status),
+        });
+        const [after] = await ctx.db
+          .select()
+          .from(damageReports)
+          .where(eq(damageReports.id, id));
+        expect(after).toEqual(before);
+      }
+    }
+
+    const residentUnit = await ctx.createUnit('R-06', {
+      activeResidentUserId: ctx.ids.actorIds.RESIDENT,
+    });
+    const report = await ctx
+      .api('post', '/api/reports', 'RESIDENT')
+      .send(payload(residentUnit.id))
+      .expect(201);
+    await ctx
+      .api('post', `/api/reports/${report.body.id}/verify`)
+      .send({ finalPriority: 'MEDIUM' })
+      .expect(200);
+
+    for (const [path, body] of [
+      [`/api/reports/${report.body.id}/verify`, { finalPriority: 'HIGH' }],
+      [
+        `/api/reports/${report.body.id}/reject`,
+        { finalPriority: 'LOW', rejectionReason: 'Too late' },
+      ],
+    ] as const) {
+      const [before] = await ctx.db
+        .select()
+        .from(damageReports)
+        .where(eq(damageReports.id, report.body.id));
+      await ctx.api('post', path).send(body).expect(409);
+      const [after] = await ctx.db
+        .select()
+        .from(damageReports)
+        .where(eq(damageReports.id, report.body.id));
+      expect(after).toEqual(before);
+    }
+  });
+
+  it('rolls back a decision when the database rejects the report update', async () => {
+    const unit = await ctx.createUnit('R-07');
+    const report = await ctx.addReport(unit.id);
+    const [before] = await ctx.db
+      .select()
+      .from(damageReports)
+      .where(eq(damageReports.id, report.id));
+
+    await ctx.db.execute(
+      sql.raw(`
+      CREATE FUNCTION fail_report_review_for_test() RETURNS trigger
+      LANGUAGE plpgsql AS $$
+      BEGIN
+        IF NEW.status IN ('VERIFIED', 'REJECTED') THEN
+          RAISE EXCEPTION 'simulated report review failure';
+        END IF;
+        RETURN NEW;
+      END;
+      $$
+    `),
+    );
+    await ctx.db.execute(
+      sql.raw(`
+      CREATE TRIGGER fail_report_review_for_test
+      BEFORE UPDATE ON damage_reports
+      FOR EACH ROW EXECUTE FUNCTION fail_report_review_for_test()
+    `),
+    );
+
+    try {
+      await ctx
+        .api('post', `/api/reports/${report.id}/verify`)
+        .send({ finalPriority: 'HIGH', reviewNote: 'Checked' })
+        .expect(500);
+    } finally {
+      await ctx.db.execute(
+        sql.raw('DROP TRIGGER fail_report_review_for_test ON damage_reports'),
+      );
+      await ctx.db.execute(
+        sql.raw('DROP FUNCTION fail_report_review_for_test()'),
+      );
+    }
+
+    const [after] = await ctx.db
+      .select()
+      .from(damageReports)
+      .where(eq(damageReports.id, report.id));
+    expect(after).toEqual(before);
   });
 });

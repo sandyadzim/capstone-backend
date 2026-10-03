@@ -13,6 +13,23 @@ export const reportCreateSchema = z
   })
   .strict();
 
+const reviewNoteSchema = z.string().trim().min(1).optional();
+
+export const reportVerifySchema = z
+  .object({
+    finalPriority: z.enum(PRIORITIES),
+    reviewNote: reviewNoteSchema,
+  })
+  .strict();
+
+export const reportRejectSchema = z
+  .object({
+    finalPriority: z.enum(PRIORITIES),
+    rejectionReason: z.string().trim().min(1),
+    reviewNote: reviewNoteSchema,
+  })
+  .strict();
+
 const positiveQueryInteger = z
   .string()
   .regex(/^[0-9]+$/)
@@ -35,4 +52,6 @@ export const reportListSchema = z
 
 export type ReportIdInput = z.infer<typeof reportIdSchema>;
 export type ReportCreateInput = z.infer<typeof reportCreateSchema>;
+export type ReportVerifyInput = z.infer<typeof reportVerifySchema>;
+export type ReportRejectInput = z.infer<typeof reportRejectSchema>;
 export type ReportListInput = z.infer<typeof reportListSchema>;

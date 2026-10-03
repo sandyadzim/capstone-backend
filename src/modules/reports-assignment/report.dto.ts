@@ -71,6 +71,8 @@ export class ReportPhotoResponseDto {
 export class ReportDetailResponseDto extends ReportListItemResponseDto {
   @ApiProperty() description!: string;
   @ApiProperty({ nullable: true }) rejectionReason!: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true })
+  reviewNote?: string | null;
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   closedAt!: Date | null;
   @ApiProperty({ type: String, format: 'date-time' }) createdAt!: Date;

@@ -261,6 +261,8 @@ describe('Authentication and sessions (e2e)', () => {
       '/api/property',
       '/api/reports',
       '/api/reports/{id}',
+      '/api/reports/{id}/reject',
+      '/api/reports/{id}/verify',
       '/api/units',
       '/api/units/{id}',
       '/api/units/{id}/archive',
@@ -316,6 +318,21 @@ describe('Authentication and sessions (e2e)', () => {
     expect(
       document.paths['/api/reports/{id}'].get.responses['404'],
     ).toBeDefined();
+
+    const verify = document.paths['/api/reports/{id}/verify'].post;
+    expect(verify.responses['200']).toBeDefined();
+    expect(verify.responses['403']).toBeDefined();
+    expect(verify.responses['409']).toBeDefined();
+    expect(JSON.stringify(verify.requestBody)).toContain('finalPriority');
+    expect(JSON.stringify(verify.requestBody)).toContain('reviewNote');
+    expect(verify.security).toEqual([{ [cookieSchemeName!]: [] }]);
+
+    const reject = document.paths['/api/reports/{id}/reject'].post;
+    expect(reject.responses['200']).toBeDefined();
+    expect(reject.responses['403']).toBeDefined();
+    expect(reject.responses['409']).toBeDefined();
+    expect(JSON.stringify(reject.requestBody)).toContain('rejectionReason');
+    expect(reject.security).toEqual([{ [cookieSchemeName!]: [] }]);
   });
 
   it('deletes the server session on logout', async () => {

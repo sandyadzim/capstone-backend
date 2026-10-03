@@ -3,6 +3,8 @@ import {
   reportCreateSchema,
   reportIdSchema,
   reportListSchema,
+  reportRejectSchema,
+  reportVerifySchema,
 } from './report.schemas.js';
 
 const valid = {
@@ -62,6 +64,47 @@ describe('report schemas', () => {
       { page: '9007199254740991', pageSize: '100' },
     ]) {
       expect(reportListSchema.safeParse(query).success).toBe(false);
+    }
+  });
+
+  it('validates verify and reject decisions with optional internal notes', () => {
+    expect(reportVerifySchema.parse({ finalPriority: 'HIGH' })).toEqual({
+      finalPriority: 'HIGH',
+    });
+    expect(
+      reportVerifySchema.parse({
+        finalPriority: 'LOW',
+        reviewNote: '  Reviewed against photos.  ',
+      }),
+    ).toEqual({
+      finalPriority: 'LOW',
+      reviewNote: 'Reviewed against photos.',
+    });
+    expect(
+      reportRejectSchema.parse({
+        finalPriority: 'MEDIUM',
+        rejectionReason: '  Duplicate report. ',
+      }),
+    ).toEqual({
+      finalPriority: 'MEDIUM',
+      rejectionReason: 'Duplicate report.',
+    });
+
+    for (const input of [
+      {},
+      { finalPriority: 'URGENT' },
+      { finalPriority: 'HIGH', reviewNote: '  ' },
+      { finalPriority: 'HIGH', reviewNote: null },
+      { finalPriority: 'HIGH', status: 'VERIFIED' },
+    ]) {
+      expect(reportVerifySchema.safeParse(input).success).toBe(false);
+    }
+    for (const input of [
+      { finalPriority: 'HIGH' },
+      { finalPriority: 'HIGH', rejectionReason: '  ' },
+      { finalPriority: 'HIGH', rejectionReason: 'Duplicate', reviewerId: 'id' },
+    ]) {
+      expect(reportRejectSchema.safeParse(input).success).toBe(false);
     }
   });
 });

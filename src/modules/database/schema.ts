@@ -194,6 +194,7 @@ export const damageReports = pgTable(
       .$type<DamageReportStatus>()
       .notNull(),
     rejectionReason: text('rejection_reason'),
+    reviewNote: text('review_note'),
     reportedAt: timestamp('reported_at', { withTimezone: true, mode: 'date' })
       .notNull()
       .defaultNow(),

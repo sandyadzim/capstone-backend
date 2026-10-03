@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { CurrentUser } from '@nestjs/authentication';
 import {
   ApiBadRequestResponse,
@@ -27,11 +35,15 @@ import {
   reportCreateSchema,
   reportIdSchema,
   reportListSchema,
+  reportRejectSchema,
+  reportVerifySchema,
 } from './report.schemas.js';
 import type {
   ReportCreateInput,
   ReportIdInput,
   ReportListInput,
+  ReportRejectInput,
+  ReportVerifyInput,
 } from './report.schemas.js';
 import { ReportsService } from './reports.service.js';
 
@@ -76,6 +88,61 @@ export class ReportsController {
     @Param({ schema: reportIdSchema }) params: ReportIdInput,
   ) {
     return this.reports.get(actor, params.id);
+  }
+
+  @Post(':id/verify')
+  @HttpCode(200)
+  @Roles('ADMIN')
+  @ApiOperation({
+    summary: 'Verify a Resident report and set its final priority (Admin)',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['finalPriority'],
+      properties: {
+        finalPriority: { type: 'string', enum: [...PRIORITIES] },
+        reviewNote: { type: 'string', minLength: 1 },
+      },
+    },
+  })
+  @ApiOkResponse({ type: ReportDetailResponseDto })
+  @ApiConflictResponse({ type: ApiErrorResponseDto })
+  verify(
+    @CurrentUser() actor: AuthenticatedActor,
+    @Param({ schema: reportIdSchema }) params: ReportIdInput,
+    @Body({ schema: reportVerifySchema }) input: ReportVerifyInput,
+  ) {
+    return this.reports.verify(actor, params.id, input);
+  }
+
+  @Post(':id/reject')
+  @HttpCode(200)
+  @Roles('ADMIN')
+  @ApiOperation({
+    summary: 'Reject a Resident report with a reason (Admin)',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['finalPriority', 'rejectionReason'],
+      properties: {
+        finalPriority: { type: 'string', enum: [...PRIORITIES] },
+        rejectionReason: { type: 'string', minLength: 1 },
+        reviewNote: { type: 'string', minLength: 1 },
+      },
+    },
+  })
+  @ApiOkResponse({ type: ReportDetailResponseDto })
+  @ApiConflictResponse({ type: ApiErrorResponseDto })
+  reject(
+    @CurrentUser() actor: AuthenticatedActor,
+    @Param({ schema: reportIdSchema }) params: ReportIdInput,
+    @Body({ schema: reportRejectSchema }) input: ReportRejectInput,
+  ) {
+    return this.reports.reject(actor, params.id, input);
   }
 
   @Post()

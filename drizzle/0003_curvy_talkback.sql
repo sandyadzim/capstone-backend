@@ -1,0 +1,1 @@
+ALTER TABLE "damage_reports" ADD COLUMN "review_note" text;

@@ -16,7 +16,12 @@ import {
   users,
 } from '../database/schema.js';
 import { INITIAL_PROPERTY_ID } from '../property/property.constants.js';
-import type { ReportCreateInput, ReportListInput } from './report.schemas.js';
+import type {
+  ReportCreateInput,
+  ReportListInput,
+  ReportRejectInput,
+  ReportVerifyInput,
+} from './report.schemas.js';
 
 type Executor = Database | DatabaseTransaction;
 
@@ -134,6 +139,69 @@ export class ReportsRepository {
     });
   }
 
+  async review(
+    id: string,
+    actor: AuthenticatedActor,
+    decision:
+      | { kind: 'verify'; input: ReportVerifyInput }
+      | { kind: 'reject'; input: ReportRejectInput },
+  ) {
+    return this.database.transaction(async (transaction) => {
+      const [lockedActor] = await transaction
+        .select({ id: users.id, role: users.role, isActive: users.isActive })
+        .from(users)
+        .where(eq(users.id, actor.id))
+        .for('update');
+      if (
+        !lockedActor ||
+        !lockedActor.isActive ||
+        lockedActor.role !== 'ADMIN'
+      ) {
+        return { kind: 'actor-changed' as const };
+      }
+
+      const [report] = await transaction
+        .select({ id: damageReports.id, status: damageReports.status })
+        .from(damageReports)
+        .innerJoin(units, eq(units.id, damageReports.unitId))
+        .where(
+          and(
+            eq(damageReports.id, id),
+            eq(units.propertyId, INITIAL_PROPERTY_ID),
+          ),
+        )
+        .for('update', { of: damageReports });
+      if (!report) return { kind: 'report-not-found' as const };
+      if (report.status !== 'REPORTED') {
+        return { kind: 'status-conflict' as const, status: report.status };
+      }
+
+      const decisionFields =
+        decision.kind === 'verify'
+          ? {
+              status: 'VERIFIED' as const,
+              finalPriority: decision.input.finalPriority,
+              rejectionReason: null,
+              reviewNote: decision.input.reviewNote ?? null,
+            }
+          : {
+              status: 'REJECTED' as const,
+              finalPriority: decision.input.finalPriority,
+              rejectionReason: decision.input.rejectionReason,
+              reviewNote: decision.input.reviewNote ?? null,
+            };
+      await transaction
+        .update(damageReports)
+        .set({ ...decisionFields, reviewedByUserId: actor.id })
+        .where(eq(damageReports.id, report.id));
+
+      return {
+        kind: 'reviewed' as const,
+        report: (await this.findAccessible(report.id, actor, transaction))!,
+      };
+    });
+  }
+
   async list(actor: AuthenticatedActor, input: ReportListInput) {
     return this.database.db.transaction(
       async (transaction) => {
@@ -201,6 +269,7 @@ export class ReportsRepository {
         reportedAt: damageReports.reportedAt,
         description: damageReports.description,
         rejectionReason: damageReports.rejectionReason,
+        reviewNote: damageReports.reviewNote,
         closedAt: damageReports.closedAt,
         createdAt: damageReports.createdAt,
         updatedAt: damageReports.updatedAt,
@@ -286,6 +355,7 @@ export class ReportsRepository {
       reportedAt: row.reportedAt,
       description: row.description,
       rejectionReason: row.rejectionReason,
+      reviewNote: row.reviewNote,
       closedAt: row.closedAt,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -309,6 +379,7 @@ export class ReportsRepository {
         createdBy: _createdBy,
         reportedBy: _reportedBy,
         reviewedBy: _reviewedBy,
+        reviewNote: _reviewNote,
         closedBy: _closedBy,
         assignment: safeAssignment,
         ...safeDetail

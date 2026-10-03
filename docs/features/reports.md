@@ -37,6 +37,41 @@ Admin melihat semua laporan properti Phase 1, Resident melihat laporan unit yang
 
 `GET /api/reports/:id` menggunakan cakupan yang sama. Laporan yang tidak ditemukan dan laporan di luar cakupan sama-sama menghasilkan `404 NOT_FOUND`. Detail memuat unit, deskripsi, status/prioritas, foto, dan assignment beserta estimasi bila tersedia. Respons Admin turut memuat identitas pembuat/pelapor/reviewer/closer dan pemberi assignment. Respons Resident dan Technician tidak memuat identitas audit tersebut atau pemberi assignment.
 
+## Review laporan oleh Admin
+
+Hanya Admin dapat mengambil keputusan atas laporan `REPORTED`. Setiap operasi mengembalikan `200` dan detail laporan terbaru. Bila laporan tidak lagi `REPORTED`, server mengembalikan `409 CONFLICT`; `message` menyebutkan status saat ini. Ambil ulang detail dengan `GET /api/reports/:id` sebelum menentukan tindakan berikutnya. Laporan yang dibuat Admin sudah `VERIFIED` dan tidak dapat direview.
+
+Verifikasi menetapkan prioritas final dan menerima catatan internal opsional:
+
+```http
+POST /api/reports/{id}/verify
+Content-Type: application/json
+```
+
+```json
+{
+  "finalPriority": "HIGH",
+  "reviewNote": "Foto menunjukkan kerusakan yang perlu segera ditangani."
+}
+```
+
+Penolakan juga wajib menetapkan prioritas final dan alasan yang akan terlihat oleh pelapor:
+
+```http
+POST /api/reports/{id}/reject
+Content-Type: application/json
+```
+
+```json
+{
+  "finalPriority": "LOW",
+  "rejectionReason": "Laporan ini duplikat dari RPT-0000000001.",
+  "reviewNote": "Diperiksa terhadap laporan unit yang sama."
+}
+```
+
+`finalPriority` harus berupa `LOW`, `MEDIUM`, atau `HIGH`. `rejectionReason` wajib berisi teks setelah spasi tepi dibuang. `reviewNote` boleh dihilangkan; bila dikirim, isinya juga harus berupa teks non-kosong setelah trimming. Field tambahan seperti `status` dan `reviewedByUserId` ditolak. Respons Admin mencakup `reviewNote` dan `reviewedBy`; Resident dan Technician tidak menerima kedua field tersebut. `rejectionReason` tersedia pada detail laporan sesuai cakupan akses aktor.
+
 ## Contoh frontend
 
 ```ts
