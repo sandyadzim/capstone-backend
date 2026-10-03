@@ -254,6 +254,11 @@ describe('Authentication and sessions (e2e)', () => {
       '/api/auth/logout',
       '/api/auth/me',
       '/api/health',
+      '/api/property',
+      '/api/units',
+      '/api/units/{id}',
+      '/api/units/{id}/archive',
+      '/api/units/{id}/resident',
     ]);
 
     const loginOperation = document.paths['/api/auth/login'].post;

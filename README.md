@@ -36,6 +36,10 @@ The response contains the account identity and role. The session token is sent o
 
 `CORS_ORIGINS` is also the exact trusted-origin list for sign-in and CSRF protection. Add every frontend origin that needs to make credentialed requests; production origins should use HTTPS. The health endpoint and the login/logout routes are explicitly public. There is no self-registration endpoint.
 
+## Property and units
+
+Frontend integration for the property profile is documented in [docs/features/property.md](docs/features/property.md); unit management, pagination, resident placement, and archiving are in [docs/features/units.md](docs/features/units.md). Profile reads are available to every authenticated role; all unit routes and profile changes require Admin. Uploading/replacing the property logo will be added in BE-11.
+
 ## Environment
 
 | Variable | Default | Description |

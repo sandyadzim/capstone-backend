@@ -9,6 +9,7 @@ import { DatabaseModule } from './modules/database/database.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { MaintenanceExecutionModule } from './modules/maintenance-execution/maintenance-execution.module.js';
 import { PropertyModule } from './modules/property/property.module.js';
+import { UnitsModule } from './modules/units/units.module.js';
 import { ReportsAssignmentModule } from './modules/reports-assignment/reports-assignment.module.js';
 import { validateEnvironment } from './config/environment.js';
 
@@ -21,6 +22,7 @@ import { validateEnvironment } from './config/environment.js';
     HealthModule,
     AuthAccountsModule,
     PropertyModule,
+    UnitsModule,
     ReportsAssignmentModule,
     MaintenanceExecutionModule,
     AttachmentsModule,
