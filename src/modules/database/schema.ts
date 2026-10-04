@@ -41,7 +41,8 @@ export const DAMAGE_REPORT_STATUSES = [
   'CLOSED',
 ] as const;
 export type DamageReportStatus = (typeof DAMAGE_REPORT_STATUSES)[number];
-export type CostItemType = 'SERVICE' | 'MATERIAL';
+export const COST_ITEM_TYPES = ['SERVICE', 'MATERIAL'] as const;
+export type CostItemType = (typeof COST_ITEM_TYPES)[number];
 export type AttachmentPurpose = 'DAMAGE_PHOTO' | 'REPAIR_PHOTO' | 'RECEIPT';
 
 export const damageReportNumberSequence = pgSequence(

@@ -42,9 +42,9 @@ Frontend integration for the property profile is documented in [docs/features/pr
 
 Account administration, password changes, active Technician filtering, and account-to-unit placement are documented in [docs/features/accounts.md](docs/features/accounts.md). All account routes require Admin; passwords are stored as Argon2id hashes and never included in responses.
 
-Report creation, role-scoped listing/detail, pagination, and the optional photo upload handoff are documented in [docs/features/reports.md](docs/features/reports.md). Every report route requires a session; create is available to Admin and Resident, while list/detail results are scoped to the actor.
+Report creation, role-scoped listing/detail, pagination, costs, maintenance results, and the optional photo upload handoff are documented in [docs/features/reports.md](docs/features/reports.md). Every report route requires a session; create is available to Admin and Resident, while list/detail results are scoped to the actor.
 
-Technician task access and the atomic start-work action with an estimated arrival timestamp are documented in [docs/features/technician-work.md](docs/features/technician-work.md). Technicians see only their assigned reports; starting work changes `ASSIGNED` to `IN_PROGRESS`.
+Technician task access, the atomic start-work action, result/cost recording, and completion submission are documented in [docs/features/technician-work.md](docs/features/technician-work.md). Technicians see only their assigned reports; starting work changes `ASSIGNED` to `IN_PROGRESS`, and valid completion changes it to `COMPLETED`.
 
 ## Environment
 

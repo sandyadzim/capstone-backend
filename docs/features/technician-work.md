@@ -41,4 +41,75 @@ const report = await response.json();
 // report.assignment.estimatedArrivalAt berisi timestamp UTC.
 ```
 
-Pencatatan hasil perbaikan, biaya, dan bukti nota ditangani oleh tiket lanjutan.
+## Menyimpan hasil dan biaya
+
+Teknisi yang ditugaskan dapat menyimpan atau mengganti hasil saat laporan berstatus `IN_PROGRESS`:
+
+```http
+PUT /api/reports/{id}/result
+Content-Type: application/json
+```
+
+```json
+{
+  "inspectionResult": "Pipa diperiksa dan ditemukan bocor.",
+  "problemFound": "Sambungan pipa longgar.",
+  "repairAction": "Sambungan dikencangkan dan seal diganti.",
+  "additionalNotes": null
+}
+```
+
+Hasil pemeriksaan, masalah yang ditemukan, dan tindakan perbaikan wajib berisi teks. Catatan tambahan opsional; `null`, teks kosong, atau field yang tidak dikirim disimpan sebagai `null`. Hasil tunggal dapat diperbarui dengan mengirim PUT lagi.
+
+Daftar biaya dapat diganti seluruhnya. Array kosong menghapus seluruh baris biaya:
+
+```http
+PUT /api/reports/{id}/cost-items
+Content-Type: application/json
+```
+
+```json
+{
+  "items": [
+    {
+      "type": "SERVICE",
+      "description": "Jasa teknisi",
+      "quantity": "1.500",
+      "unitPrice": "125000.00"
+    },
+    {
+      "type": "MATERIAL",
+      "description": "Seal pipa",
+      "quantity": "2",
+      "unitPrice": "15000.00"
+    }
+  ]
+}
+```
+
+`type` adalah `SERVICE` atau `MATERIAL`. `quantity` menerima maksimum 9 digit integer dan 3 digit pecahan, harus lebih besar dari nol. `unitPrice` menerima maksimum 12 digit integer dan 2 digit pecahan, serta tidak boleh negatif. Kedua nilai harus berupa string desimal biasa tanpa eksponen. Backend menghitung subtotal dan total; klien tidak mengirim nilai tersebut. Nilai uang pada respons adalah string dua desimal. Total dihitung dari perkalian presisi penuh, sehingga dapat berbeda satu sen dari jumlah subtotal item yang masing-masing telah dibulatkan.
+
+## Upload bukti dan submit completion
+
+Simpan hasil dan biaya, unggah foto hasil bila diperlukan, lalu unggah tepat satu nota dengan endpoint BE-11 `PUT /api/reports/{id}/receipt` (multipart field `file`, gambar atau PDF maksimal 5 MiB). Nota wajib meski tidak ada baris biaya. Foto hasil opsional diunggah melalui `POST /api/reports/{id}/repair-photos`.
+
+Setelah ketiganya siap, submit:
+
+```http
+POST /api/reports/{id}/complete
+```
+
+Request body boleh kosong atau `{}`. Sukses mengembalikan `200` dan detail laporan terbaru berstatus `COMPLETED`. Hasil, biaya, attachment nota, dan status diperiksa/diperbarui secara konsisten di database. Jika hasil atau nota belum tersedia, atau status sudah berubah, API mengembalikan `409 CONFLICT`; laporan tetap `IN_PROGRESS` dan teknisi dapat melengkapi data lalu mencoba kembali. Submit ulang setelah `COMPLETED` juga menghasilkan `409`.
+
+Semua perubahan hanya diizinkan untuk Teknisi pemilik assignment dan laporan `IN_PROGRESS`. Role lain menerima `403`, laporan/assignment di luar cakupan menerima `404`, serta body invalid menerima `400 VALIDATION_ERROR`. Detail laporan menampilkan hasil dan total biaya bagi Resident yang berhak mengaksesnya; rincian biaya hanya terlihat oleh Admin dan Teknisi. Nota disembunyikan dari Resident.
+
+Contoh request browser menggunakan cookie sesi:
+
+```ts
+const response = await fetch(`/api/reports/${reportId}/complete`, {
+  method: 'POST',
+  credentials: 'include',
+});
+if (!response.ok) throw await response.json();
+const completedReport = await response.json();
+```

@@ -5,6 +5,7 @@ import type {
   Priority,
 } from '../database/schema.js';
 import {
+  COST_ITEM_TYPES,
   DAMAGE_CATEGORIES,
   DAMAGE_REPORT_STATUSES,
   PRIORITIES,
@@ -68,6 +69,27 @@ export class ReportPhotoResponseDto {
   @ApiProperty({ type: String, format: 'date-time' }) createdAt!: Date;
 }
 
+export class MaintenanceResultResponseDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty() inspectionResult!: string;
+  @ApiProperty() problemFound!: string;
+  @ApiProperty() repairAction!: string;
+  @ApiProperty({ type: String, nullable: true }) additionalNotes!: string | null;
+  @ApiProperty({ type: String, format: 'date-time' }) createdAt!: Date;
+  @ApiProperty({ type: String, format: 'date-time' }) updatedAt!: Date;
+}
+
+export class CostItemResponseDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty({ enum: COST_ITEM_TYPES }) type!: 'SERVICE' | 'MATERIAL';
+  @ApiProperty() description!: string;
+  @ApiProperty({ type: String, example: '1.250' }) quantity!: string;
+  @ApiProperty({ type: String, example: '125000.00' }) unitPrice!: string;
+  @ApiProperty({ type: String, example: '156250.00' }) subtotal!: string;
+  @ApiProperty({ type: String, format: 'date-time' }) createdAt!: Date;
+  @ApiProperty({ type: String, format: 'date-time' }) updatedAt!: Date;
+}
+
 export class ReportDetailResponseDto extends ReportListItemResponseDto {
   @ApiProperty() description!: string;
   @ApiProperty({ nullable: true }) rejectionReason!: string | null;
@@ -85,6 +107,11 @@ export class ReportDetailResponseDto extends ReportListItemResponseDto {
   repairPhotos!: ReportPhotoResponseDto[];
   @ApiProperty({ type: ReportPhotoResponseDto, nullable: true })
   receipt!: ReportPhotoResponseDto | null;
+  @ApiProperty({ type: MaintenanceResultResponseDto, nullable: true })
+  maintenanceResult!: MaintenanceResultResponseDto | null;
+  @ApiProperty({ type: String, example: '156250.00' }) totalCost!: string;
+  @ApiPropertyOptional({ type: [CostItemResponseDto] })
+  costItems?: CostItemResponseDto[];
   @ApiPropertyOptional({ type: ReportPersonResponseDto, nullable: true })
   createdBy?: ReportPersonResponseDto | null;
   @ApiPropertyOptional({ type: ReportPersonResponseDto, nullable: true })

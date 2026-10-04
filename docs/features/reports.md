@@ -54,6 +54,10 @@ Admin melihat semua laporan properti Phase 1, Resident melihat laporan unit yang
 
 `GET /api/reports/:id` menggunakan cakupan yang sama. Laporan yang tidak ditemukan dan laporan di luar cakupan sama-sama menghasilkan `404 NOT_FOUND`. Detail memuat unit, deskripsi, status/prioritas, foto, dan assignment beserta estimasi bila tersedia. Respons Admin turut memuat identitas pembuat/pelapor/reviewer/closer dan pemberi assignment. Respons Resident dan Technician tidak memuat identitas audit tersebut atau pemberi assignment.
 
+Detail juga memuat `maintenanceResult` (atau `null`) dan `totalCost` sebagai string dua desimal. Admin dan Teknisi melihat `costItems`; Resident tidak menerima rincian biaya. Resident tetap dapat melihat hasil pekerjaan dan total pada laporan yang dapat diaksesnya. Nota tetap disembunyikan dari Resident. `totalCost` dijumlahkan dari nilai presisi penuh tiap baris, sedangkan subtotal item dibulatkan ke dua desimal; karena itu penjumlahan subtotal yang ditampilkan dapat berbeda satu sen dari total.
+
+Baris biaya berisi `id`, `type` (`SERVICE` atau `MATERIAL`), `description`, `quantity`, `unitPrice`, `subtotal`, `createdAt`, dan `updatedAt`. Kuantitas serta harga dikirim dan dikembalikan sebagai string desimal agar presisi PostgreSQL tidak hilang pada JavaScript.
+
 ## Review laporan oleh Admin
 
 Hanya Admin dapat mengambil keputusan atas laporan `REPORTED`. Setiap operasi mengembalikan `200` dan detail laporan terbaru. Bila laporan tidak lagi `REPORTED`, server mengembalikan `409 CONFLICT`; `message` menyebutkan status saat ini. Ambil ulang detail dengan `GET /api/reports/:id` sebelum menentukan tindakan berikutnya. Laporan yang dibuat Admin sudah `VERIFIED` dan tidak dapat direview.

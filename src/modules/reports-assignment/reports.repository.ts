@@ -10,8 +10,10 @@ import type { AuthenticatedActor } from '../auth-accounts/authentication.types.j
 import {
   assignments,
   attachments,
+  costItems,
   damageReports,
   damageReportNumberSequence,
+  maintenanceResults,
   units,
   users,
 } from '../database/schema.js';
@@ -415,6 +417,38 @@ export class ReportsRepository {
     const receipt = reportAttachments.find(
       (attachment) => attachment.purpose === 'RECEIPT',
     );
+    const [maintenanceResult] = await executor
+      .select({
+        id: maintenanceResults.id,
+        inspectionResult: maintenanceResults.inspectionResult,
+        problemFound: maintenanceResults.problemFound,
+        repairAction: maintenanceResults.repairAction,
+        additionalNotes: maintenanceResults.additionalNotes,
+        createdAt: maintenanceResults.createdAt,
+        updatedAt: maintenanceResults.updatedAt,
+      })
+      .from(maintenanceResults)
+      .where(eq(maintenanceResults.reportId, id));
+    const reportCostItems = await executor
+      .select({
+        id: costItems.id,
+        type: costItems.type,
+        description: costItems.description,
+        quantity: costItems.quantity,
+        unitPrice: costItems.unitPrice,
+        subtotal: sql<string>`round(${costItems.quantity} * ${costItems.unitPrice}, 2)::text`,
+        createdAt: costItems.createdAt,
+        updatedAt: costItems.updatedAt,
+      })
+      .from(costItems)
+      .where(eq(costItems.reportId, id))
+      .orderBy(asc(costItems.createdAt), asc(costItems.id));
+    const [costTotal] = await executor
+      .select({
+        totalCost: sql<string>`coalesce(round(sum(${costItems.quantity} * ${costItems.unitPrice}), 2), 0.00)::text`,
+      })
+      .from(costItems)
+      .where(eq(costItems.reportId, id));
     const assignment = row.assignmentId
       ? {
           id: row.assignmentId,
@@ -464,6 +498,9 @@ export class ReportsRepository {
         actor.role === 'RESIDENT' || !receipt
           ? null
           : toAttachmentResponse(receipt),
+      maintenanceResult: maintenanceResult ?? null,
+      totalCost: costTotal?.totalCost ?? '0.00',
+      ...(actor.role === 'RESIDENT' ? {} : { costItems: reportCostItems }),
     };
     if (actor.role !== 'ADMIN') {
       const {

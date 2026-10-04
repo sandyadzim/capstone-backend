@@ -10,7 +10,7 @@ import type { PgliteDatabase } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import { resolve } from 'node:path';
 import * as argon2 from 'argon2';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { vi } from 'vitest';
 import { AppModule } from '../../src/app.module.js';
 import { configureHttpApplication } from '../../src/configure-http-application.js';
@@ -25,7 +25,9 @@ import {
   users,
   assignments,
   attachments,
+  costItems,
   damageReports,
+  maintenanceResults,
 } from '../../src/modules/database/schema.js';
 import type {
   DamageReportStatus,
@@ -169,6 +171,7 @@ export function usePropertyUnitsContext() {
     app = fixture.createNestApplication<INestApplication<App>>();
     configureHttpApplication(app, getApiEnvironment(app.get(ConfigService)));
     await app.init();
+    await app.listen(0, '127.0.0.1');
     for (const role of ['ADMIN', 'TECHNICIAN', 'RESIDENT'] as const) {
       const response = await context
         .api('post', '/api/auth/login', null)
@@ -182,12 +185,20 @@ export function usePropertyUnitsContext() {
   });
 
   beforeEach(async () => {
+    await db.execute(sql.raw(
+      'ALTER TABLE cost_items DROP CONSTRAINT IF EXISTS test_cost_items_no_trigger_failure',
+    ));
+    await db.execute(sql.raw(
+      'ALTER TABLE damage_reports DROP CONSTRAINT IF EXISTS test_reports_no_completed',
+    ));
     nextFileKey = 0;
     storage.upload.mockClear();
     storage.delete.mockClear();
     storage.deleteByUrl.mockClear();
     await db.delete(assignments);
     await db.delete(attachments);
+    await db.delete(costItems);
+    await db.delete(maintenanceResults);
     await db.delete(damageReports);
     await db.delete(units);
     await db.delete(properties).where(eq(properties.id, ids.otherPropertyId));
@@ -207,6 +218,10 @@ export function usePropertyUnitsContext() {
       .update(users)
       .set({ isActive: true, role: 'RESIDENT' })
       .where(eq(users.id, secondResidentId));
+    await db
+      .update(users)
+      .set({ isActive: true, role: 'TECHNICIAN' })
+      .where(eq(users.id, actorIds.TECHNICIAN));
   });
 
   afterAll(async () => {

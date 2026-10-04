@@ -69,6 +69,9 @@ Status HTTP dan `code` dapat dipakai untuk alur aplikasi. `message` ditujukan un
 | `POST`   | `/api/reports/:id/reject`        | ADMIN                                                     | `200`, laporan ditolak                            |
 | `POST`   | `/api/reports/:id/assign`        | ADMIN                                                     | `200`, Teknisi ditugaskan                         |
 | `POST`   | `/api/reports/:id/start`         | TECHNICIAN; harus pemilik assignment                      | `200`, estimasi disimpan dan status `IN_PROGRESS` |
+| `PUT`    | `/api/reports/:id/result`        | TECHNICIAN; pemilik assignment, status `IN_PROGRESS`      | `200`, hasil tersimpan/diperbarui                |
+| `PUT`    | `/api/reports/:id/cost-items`    | TECHNICIAN; pemilik assignment, status `IN_PROGRESS`      | `200`, seluruh baris biaya diganti                |
+| `POST`   | `/api/reports/:id/complete`      | TECHNICIAN; pemilik assignment, status `IN_PROGRESS`      | `200`, status menjadi `COMPLETED`                 |
 | `POST`   | `/api/reports/:id/damage-photos` | ADMIN atau RESIDENT sesuai akses laporan                  | `201`, URL dan relasi foto kerusakan tersimpan    |
 | `POST`   | `/api/reports/:id/repair-photos` | TECHNICIAN pemilik assignment, laporan `IN_PROGRESS`      | `201`, URL dan relasi foto hasil tersimpan        |
 | `PUT`    | `/api/reports/:id/receipt`       | TECHNICIAN pemilik assignment, laporan `IN_PROGRESS`      | `200`, nota dipasang atau diganti                 |
@@ -80,7 +83,7 @@ Detail payload auth dan contoh pemakaian browser ada di [panduan autentikasi](fe
 
 Create, review, detail, pagination laporan, pembatasan akses per role, dan bentuk respons tersedia di [panduan laporan](features/reports.md). Nomor laporan dialokasikan backend dari sequence PostgreSQL.
 
-Daftar tugas dan aksi mulai kerja Teknisi tersedia di [panduan tugas Teknisi](features/technician-work.md). Estimasi wajib memakai timestamp ISO 8601 dengan zona waktu. Upload file memakai multipart field `file`, sesi yang sama dengan REST API, dan mengembalikan URL publik setelah URL tersimpan. Nilai `UPLOADTHING_TOKEN` hanya disetel di environment backend.
+Daftar tugas, pencatatan hasil/biaya, dan pengiriman completion Teknisi tersedia di [panduan tugas Teknisi](features/technician-work.md). Upload file memakai multipart field `file`, sesi yang sama dengan REST API, dan mengembalikan URL publik setelah URL tersimpan. Nilai `UPLOADTHING_TOKEN` hanya disetel di environment backend.
 
 ## Enum domain
 
@@ -92,6 +95,7 @@ Nilai enum berikut menggunakan bentuk wire uppercase dan ditetapkan sebagai kons
 | Status laporan     | `REPORTED`, `VERIFIED`, `REJECTED`, `ASSIGNED`, `IN_PROGRESS`, `COMPLETED`, `CLOSED` |
 | Kategori kerusakan | `AC`, `ELECTRICAL`, `PLUMBING`, `FURNITURE`, `BUILDING`, `OTHER`                     |
 | Prioritas          | `LOW`, `MEDIUM`, `HIGH`                                                              |
+| Jenis biaya        | `SERVICE`, `MATERIAL`                                                                 |
 
 Status tampilan unit dihitung dari maintenance flag dan relasi RESIDENT aktif: `MAINTENANCE`, `OCCUPIED`, atau `VACANT`, dengan maintenance sebagai prioritas. Arsip ditampilkan terpisah melalui `isArchived`.
 

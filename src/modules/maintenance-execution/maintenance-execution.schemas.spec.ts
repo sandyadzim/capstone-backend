@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { startWorkSchema } from './maintenance-execution.schemas.js';
+import {
+  completeWorkSchema,
+  costItemsSchema,
+  maintenanceResultSchema,
+  startWorkSchema,
+} from './maintenance-execution.schemas.js';
 
 describe('start work schema', () => {
   it('accepts UTC, offset, and past timestamps and normalizes them to Date', () => {
@@ -28,5 +33,61 @@ describe('start work schema', () => {
     ]) {
       expect(startWorkSchema.safeParse(input).success).toBe(false);
     }
+  });
+});
+
+describe('maintenance result and cost schemas', () => {
+  it('trims required result text and normalizes empty optional notes', () => {
+    expect(
+      maintenanceResultSchema.parse({
+        inspectionResult: ' Checked ',
+        problemFound: ' Leak ',
+        repairAction: ' Fixed ',
+        additionalNotes: '   ',
+      }),
+    ).toEqual({
+      inspectionResult: 'Checked',
+      problemFound: 'Leak',
+      repairAction: 'Fixed',
+      additionalNotes: null,
+    });
+  });
+
+  it('validates decimal values against database precision', () => {
+    expect(
+      costItemsSchema.safeParse({
+        items: [
+          {
+            type: 'SERVICE',
+            description: 'Labor',
+            quantity: '999999999.999',
+            unitPrice: '999999999999.99',
+          },
+        ],
+      }).success,
+    ).toBe(true);
+    for (const item of [
+      { type: 'OTHER', description: 'Labor', quantity: '1', unitPrice: '1' },
+      { type: 'SERVICE', description: ' ', quantity: '1', unitPrice: '1' },
+      { type: 'SERVICE', description: 'Labor', quantity: '0', unitPrice: '1' },
+      { type: 'SERVICE', description: 'Labor', quantity: '-1', unitPrice: '1' },
+      { type: 'SERVICE', description: 'Labor', quantity: '1.0000', unitPrice: '1' },
+      { type: 'SERVICE', description: 'Labor', quantity: '1000000000', unitPrice: '1' },
+      { type: 'SERVICE', description: 'Labor', quantity: '1', unitPrice: '1.001' },
+      { type: 'SERVICE', description: 'Labor', quantity: 1, unitPrice: '1' },
+    ]) {
+      expect(costItemsSchema.safeParse({ items: [item] }).success).toBe(false);
+    }
+    expect(costItemsSchema.parse({ items: [] }).items).toEqual([]);
+    expect(costItemsSchema.safeParse({ items: [], total: '0' }).success).toBe(
+      false,
+    );
+  });
+
+  it('accepts either an omitted completion body or an empty object only', () => {
+    expect(completeWorkSchema.parse(undefined)).toEqual({});
+    expect(completeWorkSchema.parse({})).toEqual({});
+    expect(completeWorkSchema.safeParse({ receiptUrl: 'https://example.test' }).success)
+      .toBe(false);
   });
 });
