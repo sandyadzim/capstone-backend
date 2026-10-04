@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { DAMAGE_CATEGORIES, PRIORITIES } from '../database/schema.js';
+import {
+  DAMAGE_CATEGORIES,
+  DAMAGE_REPORT_STATUSES,
+  PRIORITIES,
+} from '../database/schema.js';
 
 export const reportIdSchema = z.object({ id: z.uuid().toLowerCase() }).strict();
 
@@ -50,12 +54,27 @@ export const reportListSchema = z
       .pipe(z.number().max(100))
       .optional()
       .default(20),
+    q: z.string().trim().max(160).optional(),
+    status: z.enum(DAMAGE_REPORT_STATUSES).optional(),
+    category: z.enum(DAMAGE_CATEGORIES).optional(),
+    priority: z.enum(PRIORITIES).optional(),
+    dateFrom: z.iso.date().optional(),
+    dateTo: z.iso.date().optional(),
   })
   .strict()
   .refine((value) => Number.isSafeInteger((value.page - 1) * value.pageSize), {
     path: ['page'],
     message: 'Pagination offset exceeds the supported range',
-  });
+  })
+  .refine(
+    (value) =>
+      !value.dateFrom || !value.dateTo || value.dateFrom <= value.dateTo,
+    {
+      path: ['dateTo'],
+      message: 'dateTo must be on or after dateFrom',
+    },
+  )
+  .transform((value) => ({ ...value, q: value.q || undefined }));
 
 export type ReportIdInput = z.infer<typeof reportIdSchema>;
 export type ReportCreateInput = z.infer<typeof reportCreateSchema>;

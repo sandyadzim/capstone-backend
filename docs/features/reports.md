@@ -50,7 +50,26 @@ Gunakan proxy `/api` menuju backend saat menjalankan Vite dan reverse proxy orig
 
 Respons berbentuk `{ "data": [...], "meta": { "page": 1, "pageSize": 20, "total": 0, "totalPages": 0 } }`. Urutan adalah `reportedAt` terbaru, lalu ID terbaru. Halaman di luar hasil mengembalikan `data: []`. Query yang tidak dikenal, berulang, atau invalid ditolak dengan `400 VALIDATION_ERROR`.
 
-Admin melihat semua laporan properti Phase 1, Resident melihat laporan unit yang ditempatinya saat ini, dan Technician melihat laporan yang ditugaskan kepadanya. Pencarian dan filter ditambahkan pada BE-14.
+Pencarian dan filter dapat digabungkan pada himpunan laporan yang boleh dilihat aktor:
+
+| Query | Perilaku |
+| ----- | -------- |
+| `q` | Potongan nomor laporan atau judul, case-insensitive; trim spasi tepi, maksimum 160 karakter. Kosong berarti tidak mencari. |
+| `status` | Satu status laporan yang valid. |
+| `category` | Satu kategori laporan yang valid. |
+| `priority` | `LOW`, `MEDIUM`, atau `HIGH`; memakai prioritas final, atau prioritas usulan selama laporan belum ditinjau. |
+| `dateFrom` | Tanggal `YYYY-MM-DD` inklusif berdasarkan `reportedAt` dalam kalender `Asia/Jakarta`. |
+| `dateTo` | Tanggal `YYYY-MM-DD` inklusif berdasarkan `reportedAt` dalam kalender `Asia/Jakarta`. |
+
+Filter yang berbeda berlaku sekaligus. Pencarian mencocokkan nomor atau judul; karakter `%`, `_`, dan `\` dicari sebagai teks literal. `dateFrom` atau `dateTo` boleh digunakan sendiri; jika keduanya diberikan, tanggal awal tidak boleh melewati tanggal akhir.
+
+Contoh pencarian dan filter gabungan:
+
+```http
+GET /api/reports?q=AC%20tidak%20dingin&status=IN_PROGRESS&category=AC&priority=HIGH&dateFrom=2026-10-01&dateTo=2026-10-04&page=1&pageSize=20
+```
+
+Admin melihat semua laporan properti Phase 1, Resident melihat laporan unit yang ditempatinya saat ini, dan Technician melihat laporan yang ditugaskan kepadanya. Pencarian dan filter tidak memperluas cakupan ini; `meta.total` hanya menghitung hasil yang bisa diakses dan cocok dengan filter.
 
 `GET /api/reports/:id` menggunakan cakupan yang sama. Laporan yang tidak ditemukan dan laporan di luar cakupan sama-sama menghasilkan `404 NOT_FOUND`. Detail memuat unit, deskripsi, status/prioritas, foto, dan assignment beserta estimasi bila tersedia. Respons Admin turut memuat identitas pembuat/pelapor/reviewer/closer dan pemberi assignment. Respons Resident dan Technician tidak memuat identitas audit tersebut atau pemberi assignment.
 

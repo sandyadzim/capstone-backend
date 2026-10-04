@@ -322,7 +322,18 @@ describe('Authentication and sessions (e2e)', () => {
     expect(reports.get.responses['200']).toBeDefined();
     expect(
       reports.get.parameters.map((item: { name: string }) => item.name),
-    ).toEqual(expect.arrayContaining(['page', 'pageSize']));
+    ).toEqual(
+      expect.arrayContaining([
+        'page',
+        'pageSize',
+        'q',
+        'status',
+        'category',
+        'priority',
+        'dateFrom',
+        'dateTo',
+      ]),
+    );
     expect(reports.post.responses['201']).toBeDefined();
     expect(JSON.stringify(reports.post.requestBody)).toContain('unitId');
     expect(JSON.stringify(reports.post.requestBody)).toContain('priority');

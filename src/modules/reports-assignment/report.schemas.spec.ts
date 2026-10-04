@@ -52,10 +52,38 @@ describe('report schemas', () => {
 
   it('validates report ids and account-style pagination queries', () => {
     expect(reportIdSchema.safeParse({ id: 'invalid' }).success).toBe(false);
-    expect(reportListSchema.parse({})).toEqual({ page: 1, pageSize: 20 });
+    expect(reportListSchema.parse({})).toEqual({
+      page: 1,
+      pageSize: 20,
+      q: undefined,
+    });
     expect(reportListSchema.parse({ page: '2', pageSize: '100' })).toEqual({
       page: 2,
       pageSize: 100,
+    });
+    expect(
+      reportListSchema.parse({
+        q: '  AC rusak  ',
+        status: 'REPORTED',
+        category: 'AC',
+        priority: 'MEDIUM',
+        dateFrom: '2024-02-29',
+        dateTo: '2024-03-01',
+      }),
+    ).toEqual({
+      page: 1,
+      pageSize: 20,
+      q: 'AC rusak',
+      status: 'REPORTED',
+      category: 'AC',
+      priority: 'MEDIUM',
+      dateFrom: '2024-02-29',
+      dateTo: '2024-03-01',
+    });
+    expect(reportListSchema.parse({ q: '   ' })).toEqual({
+      page: 1,
+      pageSize: 20,
+      q: undefined,
     });
     for (const query of [
       { page: '0' },
@@ -63,6 +91,14 @@ describe('report schemas', () => {
       { page: '1', unexpected: 'true' },
       { page: ['1', '2'] },
       { page: '9007199254740991', pageSize: '100' },
+      { q: 'x'.repeat(161) },
+      { status: '' },
+      { status: 'UNKNOWN' },
+      { category: 'UNKNOWN' },
+      { priority: 'URGENT' },
+      { dateFrom: '2023-02-29' },
+      { dateTo: ['2024-03-01', '2024-03-02'] },
+      { dateFrom: '2024-03-02', dateTo: '2024-03-01' },
     ]) {
       expect(reportListSchema.safeParse(query).success).toBe(false);
     }

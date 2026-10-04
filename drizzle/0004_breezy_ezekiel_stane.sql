@@ -1,0 +1,2 @@
+CREATE INDEX "ix_reports_reported_date_id" ON "damage_reports" USING btree ("reported_at" DESC NULLS LAST,"id" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "ix_reports_unit_reported_date_id" ON "damage_reports" USING btree ("unit_id","reported_at" DESC NULLS LAST,"id" DESC NULLS LAST);

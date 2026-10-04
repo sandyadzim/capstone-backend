@@ -103,7 +103,11 @@ export function usePropertyUnitsContext() {
         .returning();
       return unit;
     },
-    async addReport(unitId: string, status: DamageReportStatus = 'REPORTED') {
+    async addReport(
+      unitId: string,
+      status: DamageReportStatus = 'REPORTED',
+      extra: Partial<typeof damageReports.$inferInsert> = {},
+    ) {
       const [report] = await db
         .insert(damageReports)
         .values({
@@ -120,6 +124,7 @@ export function usePropertyUnitsContext() {
           rejectionReason: status === 'REJECTED' ? 'Invalid report' : null,
           closedAt: status === 'CLOSED' ? new Date() : null,
           closedByUserId: status === 'CLOSED' ? actorIds.ADMIN : null,
+          ...extra,
         })
         .returning();
       return report;

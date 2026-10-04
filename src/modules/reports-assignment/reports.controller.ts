@@ -23,7 +23,11 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { DAMAGE_CATEGORIES, PRIORITIES } from '../database/schema.js';
+import {
+  DAMAGE_CATEGORIES,
+  DAMAGE_REPORT_STATUSES,
+  PRIORITIES,
+} from '../database/schema.js';
 import type { AuthenticatedActor } from '../auth-accounts/authentication.types.js';
 import { Roles } from '../auth-accounts/roles.decorator.js';
 import { ApiErrorResponseDto } from '../../common/http/api-error.js';
@@ -74,6 +78,44 @@ export class ReportsController {
     name: 'pageSize',
     required: false,
     schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+  })
+  @ApiQuery({
+    name: 'q',
+    required: false,
+    description:
+      'Case-insensitive partial match against report number or title; maximum 160 characters.',
+    schema: { type: 'string', maxLength: 160 },
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    schema: { type: 'string', enum: [...DAMAGE_REPORT_STATUSES] },
+  })
+  @ApiQuery({
+    name: 'category',
+    required: false,
+    schema: { type: 'string', enum: [...DAMAGE_CATEGORIES] },
+  })
+  @ApiQuery({
+    name: 'priority',
+    required: false,
+    description:
+      'Matches final priority, or proposed priority when the report has not been reviewed.',
+    schema: { type: 'string', enum: [...PRIORITIES] },
+  })
+  @ApiQuery({
+    name: 'dateFrom',
+    required: false,
+    description:
+      'Inclusive calendar date in Asia/Jakarta (YYYY-MM-DD), applied to reportedAt.',
+    schema: { type: 'string', format: 'date' },
+  })
+  @ApiQuery({
+    name: 'dateTo',
+    required: false,
+    description:
+      'Inclusive calendar date in Asia/Jakarta (YYYY-MM-DD), applied to reportedAt.',
+    schema: { type: 'string', format: 'date' },
   })
   list(
     @CurrentUser() actor: AuthenticatedActor,

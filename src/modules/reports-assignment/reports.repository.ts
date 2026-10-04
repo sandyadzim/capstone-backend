@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseService } from '../database/database.service.js';
 import type {
@@ -281,7 +282,39 @@ export class ReportsRepository {
   async list(actor: AuthenticatedActor, input: ReportListInput) {
     return this.database.db.transaction(
       async (transaction) => {
-        const predicate = accessPredicate(actor);
+        const predicates: SQL[] = [accessPredicate(actor)!];
+        if (input.q) {
+          const escapedQuery = input.q.replace(/[\\%_]/g, '\\$&');
+          const pattern = `%${escapedQuery}%`;
+          predicates.push(
+            or(
+              sql`${damageReports.reportNumber} ILIKE ${pattern} ESCAPE E'\\\\'`,
+              sql`${damageReports.title} ILIKE ${pattern} ESCAPE E'\\\\'`,
+            )!,
+          );
+        }
+        if (input.status) {
+          predicates.push(eq(damageReports.status, input.status));
+        }
+        if (input.category) {
+          predicates.push(eq(damageReports.category, input.category));
+        }
+        if (input.priority) {
+          predicates.push(
+            sql`coalesce(${damageReports.finalPriority}, ${damageReports.proposedPriority}) = ${input.priority}`,
+          );
+        }
+        if (input.dateFrom) {
+          predicates.push(
+            sql`${damageReports.reportedAt} >= (${input.dateFrom}::date::timestamp AT TIME ZONE 'Asia/Jakarta')`,
+          );
+        }
+        if (input.dateTo) {
+          predicates.push(
+            sql`${damageReports.reportedAt} < ((${input.dateTo}::date + 1)::timestamp AT TIME ZONE 'Asia/Jakarta')`,
+          );
+        }
+        const predicate = and(...predicates)!;
         const [totals] = await transaction
           .select({ total: count() })
           .from(damageReports)

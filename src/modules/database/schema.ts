@@ -248,6 +248,15 @@ export const damageReports = pgTable(
       sql`(${table.status} = 'CLOSED' AND ${table.closedAt} IS NOT NULL AND ${table.closedByUserId} IS NOT NULL) OR (${table.status} <> 'CLOSED' AND ${table.closedAt} IS NULL AND ${table.closedByUserId} IS NULL)`,
     ),
     uniqueIndex('uk_reports_number').on(table.reportNumber),
+    index('ix_reports_reported_date_id').on(
+      table.reportedAt.desc(),
+      table.id.desc(),
+    ),
+    index('ix_reports_unit_reported_date_id').on(
+      table.unitId,
+      table.reportedAt.desc(),
+      table.id.desc(),
+    ),
     index('ix_reports_unit_status_date').on(
       table.unitId,
       table.status,

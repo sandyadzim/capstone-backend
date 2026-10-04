@@ -7,6 +7,8 @@ import {
   users,
 } from '../src/modules/database/schema.js';
 import { ReportsService } from '../src/modules/reports-assignment/reports.service.js';
+import { ReportsRepository } from '../src/modules/reports-assignment/reports.repository.js';
+import { vi } from 'vitest';
 import { usePropertyUnitsContext } from './support/property-units-context.js';
 
 describe('Reports API (e2e)', () => {
@@ -237,6 +239,151 @@ describe('Reports API (e2e)', () => {
     expect(
       (await ctx.api('get', '/api/reports?page=3&pageSize=1')).body.data,
     ).toEqual([]);
+  });
+
+  it('searches and filters reports within actor scope and Jakarta calendar dates', async () => {
+    const residentUnit = await ctx.createUnit('F-01', {
+      activeResidentUserId: ctx.ids.actorIds.RESIDENT,
+    });
+    const otherResidentUnit = await ctx.createUnit('F-02', {
+      activeResidentUserId: ctx.ids.secondResidentId,
+    });
+    const literalMatch = await ctx.addReport(residentUnit.id, 'REPORTED', {
+      reportNumber: 'RPT-100%_A',
+      title: 'Fan 100%_Filter',
+      description: 'The description must not be searched.',
+      category: 'AC',
+      proposedPriority: 'MEDIUM',
+      reportedAt: new Date('2099-02-28T17:00:00.000Z'),
+    });
+    const wildcardDecoy = await ctx.addReport(residentUnit.id, 'REPORTED', {
+      reportNumber: 'RPT-100XXA',
+      title: 'Fan 100ZZFilter',
+      category: 'AC',
+      proposedPriority: 'LOW',
+      reportedAt: new Date('2099-03-01T17:00:00.000Z'),
+    });
+    const verified = await ctx.addReport(residentUnit.id, 'VERIFIED', {
+      reportNumber: 'RPT-VERIFIED-LEAK',
+      title: 'Leak under sink',
+      category: 'PLUMBING',
+      finalPriority: 'HIGH',
+      reportedAt: new Date('2099-03-01T10:00:00.000Z'),
+    });
+    const sameTimeReport = await ctx.addReport(residentUnit.id, 'REPORTED', {
+      reportNumber: 'RPT-SAME-TIME',
+      title: 'Same timestamp',
+      category: 'OTHER',
+      proposedPriority: 'LOW',
+      reportedAt: new Date('2099-03-01T10:00:00.000Z'),
+    });
+    const residentLeak = await ctx.addReport(residentUnit.id, 'REPORTED', {
+      reportNumber: 'RPT-RESIDENT-LEAK',
+      title: 'Shared leak',
+      category: 'PLUMBING',
+      proposedPriority: 'MEDIUM',
+    });
+    await ctx.addReport(otherResidentUnit.id, 'REPORTED', {
+      reportNumber: 'RPT-FOREIGN-LEAK',
+      title: 'Shared leak',
+      category: 'PLUMBING',
+      proposedPriority: 'MEDIUM',
+    });
+    await ctx.db.insert(assignments).values({
+      reportId: verified.id,
+      technicianUserId: ctx.ids.actorIds.TECHNICIAN,
+      assignedByUserId: ctx.ids.actorIds.ADMIN,
+    });
+
+    const literalSearch = await ctx
+      .api('get', '/api/reports', 'RESIDENT')
+      .query({ q: '  fan 100%_filter ' })
+      .expect(200);
+    expect(literalSearch.body.data.map((report: { id: string }) => report.id))
+      .toEqual([literalMatch.id]);
+    const descriptionSearch = await ctx
+      .api('get', '/api/reports', 'RESIDENT')
+      .query({ q: 'description must not be searched' })
+      .expect(200);
+    expect(descriptionSearch.body.data).toEqual([]);
+
+    const dateRange = await ctx
+      .api('get', '/api/reports', 'RESIDENT')
+      .query({ dateFrom: '2099-03-01', dateTo: '2099-03-01' })
+      .expect(200);
+    const dateRangeIds = dateRange.body.data.map(
+      (report: { id: string }) => report.id,
+    );
+    expect(dateRangeIds).toEqual(
+      [verified.id, sameTimeReport.id].sort((left, right) =>
+        right.localeCompare(left),
+      ).concat(literalMatch.id),
+    );
+    expect(dateRange.body.meta.total).toBe(3);
+
+    const dateFromOnly = await ctx
+      .api('get', '/api/reports', 'RESIDENT')
+      .query({ dateFrom: '2099-03-02' })
+      .expect(200);
+    expect(dateFromOnly.body.data.map((report: { id: string }) => report.id))
+      .toEqual([wildcardDecoy.id]);
+    const dateToOnly = await ctx
+      .api('get', '/api/reports', 'RESIDENT')
+      .query({ dateTo: '2099-03-01' })
+      .expect(200);
+    expect(dateToOnly.body.data.map((report: { id: string }) => report.id))
+      .toContain(literalMatch.id);
+    expect(dateToOnly.body.data.map((report: { id: string }) => report.id))
+      .not.toContain(wildcardDecoy.id);
+
+    const combined = await ctx
+      .api('get', '/api/reports', 'RESIDENT')
+      .query({
+        status: 'REPORTED',
+        category: 'AC',
+        priority: 'MEDIUM',
+        dateFrom: '2099-03-01',
+        dateTo: '2099-03-01',
+      })
+      .expect(200);
+    expect(combined.body.data.map((report: { id: string }) => report.id))
+      .toEqual([literalMatch.id]);
+    const finalPriority = await ctx
+      .api('get', '/api/reports', 'ADMIN')
+      .query({ priority: 'HIGH' })
+      .expect(200);
+    expect(finalPriority.body.data.map((report: { id: string }) => report.id))
+      .toContain(verified.id);
+    const proposedPriority = await ctx
+      .api('get', '/api/reports', 'ADMIN')
+      .query({ priority: 'MEDIUM' })
+      .expect(200);
+    expect(proposedPriority.body.data.map((report: { id: string }) => report.id))
+      .toContain(residentLeak.id);
+    expect(proposedPriority.body.data.map((report: { id: string }) => report.id))
+      .not.toContain(verified.id);
+
+    const residentScope = await ctx
+      .api('get', '/api/reports', 'RESIDENT')
+      .query({ q: 'shared leak' })
+      .expect(200);
+    expect(residentScope.body.meta.total).toBe(1);
+    expect(residentScope.body.data[0].id).toBe(residentLeak.id);
+    const technicianScope = await ctx
+      .api('get', '/api/reports', 'TECHNICIAN')
+      .query({ q: 'leak' })
+      .expect(200);
+    expect(technicianScope.body.meta.total).toBe(1);
+    expect(technicianScope.body.data[0].id).toBe(verified.id);
+
+    const listSpy = vi.spyOn(ctx.app.get(ReportsRepository), 'list');
+    await ctx
+      .api('get', '/api/reports')
+      .query({ dateFrom: '2026-03-02', dateTo: '2026-03-01' })
+      .expect(400);
+    await ctx.api('get', '/api/reports?status=REPORTED&status=CLOSED').expect(400);
+    expect(listSpy).not.toHaveBeenCalled();
+    listSpy.mockRestore();
   });
 
   it('verifies a Resident report, records the reviewer and keeps review notes private', async () => {
