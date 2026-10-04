@@ -20,6 +20,7 @@ describe('Property API (e2e)', () => {
     expect(response.body.createdAt).toEqual(expect.any(String));
     const property = ctx.app.get(PropertyService);
     await property.updateLogoFromVerifiedUpload(
+      ctx.ids.actorIds.ADMIN,
       'https://example.test/verified-logo.png',
     );
     await ctx
@@ -32,7 +33,10 @@ describe('Property API (e2e)', () => {
     await ctx.api('patch', '/api/property').send({ logoUrl: null }).expect(200);
     expect((await ctx.api('get', '/api/property')).body.logoUrl).toBeNull();
     await expect(
-      property.updateLogoFromVerifiedUpload('http://example.test/logo.png'),
+      property.updateLogoFromVerifiedUpload(
+        ctx.ids.actorIds.ADMIN,
+        'http://example.test/logo.png',
+      ),
     ).rejects.toThrow();
   });
 

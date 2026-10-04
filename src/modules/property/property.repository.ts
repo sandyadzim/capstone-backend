@@ -6,6 +6,7 @@ import type {
   DatabaseTransaction,
 } from '../database/database.service.js';
 import { properties } from '../database/schema.js';
+import { users } from '../database/schema.js';
 import { INITIAL_PROPERTY_ID } from './property.constants.js';
 import type { PropertyPatchInput } from './property.schemas.js';
 
@@ -33,5 +34,35 @@ export class PropertyRepository {
       .where(eq(properties.id, INITIAL_PROPERTY_ID))
       .returning();
     return property;
+  }
+
+  async updateLogoFromVerifiedUpload(actorId: string, logoUrl: string) {
+    return this.database.transaction(async (transaction) => {
+      const [actor] = await transaction
+        .select({ role: users.role, isActive: users.isActive })
+        .from(users)
+        .where(eq(users.id, actorId))
+        .for('update');
+      if (!actor?.isActive || actor.role !== 'ADMIN') {
+        return { kind: 'actor-changed' as const };
+      }
+
+      const [property] = await transaction
+        .select({ logoUrl: properties.logoUrl })
+        .from(properties)
+        .where(eq(properties.id, INITIAL_PROPERTY_ID))
+        .for('update');
+      if (!property) return { kind: 'property-not-found' as const };
+      const [updated] = await transaction
+        .update(properties)
+        .set({ logoUrl })
+        .where(eq(properties.id, INITIAL_PROPERTY_ID))
+        .returning();
+      return {
+        kind: 'saved' as const,
+        property: updated,
+        previousUrl: property.logoUrl,
+      };
+    });
   }
 }

@@ -81,6 +81,10 @@ export class ReportDetailResponseDto extends ReportListItemResponseDto {
   assignment!: ReportAssignmentResponseDto | null;
   @ApiProperty({ type: [ReportPhotoResponseDto] })
   damagePhotos!: ReportPhotoResponseDto[];
+  @ApiProperty({ type: [ReportPhotoResponseDto] })
+  repairPhotos!: ReportPhotoResponseDto[];
+  @ApiProperty({ type: ReportPhotoResponseDto, nullable: true })
+  receipt!: ReportPhotoResponseDto | null;
   @ApiPropertyOptional({ type: ReportPersonResponseDto, nullable: true })
   createdBy?: ReportPersonResponseDto | null;
   @ApiPropertyOptional({ type: ReportPersonResponseDto, nullable: true })

@@ -11,6 +11,7 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import { resolve } from 'node:path';
 import * as argon2 from 'argon2';
 import { eq } from 'drizzle-orm';
+import { vi } from 'vitest';
 import { AppModule } from '../../src/app.module.js';
 import { configureHttpApplication } from '../../src/configure-http-application.js';
 import { getApiEnvironment } from '../../src/config/environment.js';
@@ -31,6 +32,7 @@ import type {
   UserRole,
 } from '../../src/modules/database/schema.js';
 import { INITIAL_PROPERTY_ID } from '../../src/modules/property/property.constants.js';
+import { UploadThingStorageService } from '../../src/modules/attachments/uploadthing-storage.service.js';
 
 const origin = 'http://localhost:5173';
 const password = 'test-only-password';
@@ -46,6 +48,16 @@ export function usePropertyUnitsContext() {
   let db: PgliteDatabase<typeof schema>;
   let app: INestApplication<App>;
   const cookies: Record<string, string> = {};
+  let nextFileKey = 0;
+  const storage = {
+    upload: vi.fn(async () => {
+      nextFileKey += 1;
+      const fileKey = `test-file-${nextFileKey}.png`;
+      return { fileUrl: `https://test-app.ufs.sh/f/${fileKey}`, fileKey };
+    }),
+    delete: vi.fn(async () => undefined),
+    deleteByUrl: vi.fn(async () => undefined),
+  };
   const ids = {
     INITIAL_PROPERTY_ID,
     actorIds,
@@ -63,6 +75,7 @@ export function usePropertyUnitsContext() {
     get db() {
       return db;
     },
+    storage,
     api(
       method: 'get' | 'post' | 'patch' | 'put' | 'delete',
       path: string,
@@ -150,6 +163,8 @@ export function usePropertyUnitsContext() {
         db: database,
         transaction: database.transaction.bind(database),
       })
+      .overrideProvider(UploadThingStorageService)
+      .useValue(storage)
       .compile();
     app = fixture.createNestApplication<INestApplication<App>>();
     configureHttpApplication(app, getApiEnvironment(app.get(ConfigService)));
@@ -167,6 +182,10 @@ export function usePropertyUnitsContext() {
   });
 
   beforeEach(async () => {
+    nextFileKey = 0;
+    storage.upload.mockClear();
+    storage.delete.mockClear();
+    storage.deleteByUrl.mockClear();
     await db.delete(assignments);
     await db.delete(attachments);
     await db.delete(damageReports);

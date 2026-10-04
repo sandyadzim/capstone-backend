@@ -389,20 +389,32 @@ export class ReportsRepository {
       .limit(1);
     if (!row) return undefined;
 
-    const photos = await executor
+    const reportAttachments = await executor
       .select({
         id: attachments.id,
         fileUrl: attachments.fileUrl,
         createdAt: attachments.createdAt,
+        purpose: attachments.purpose,
       })
       .from(attachments)
-      .where(
-        and(
-          eq(attachments.reportId, id),
-          eq(attachments.purpose, 'DAMAGE_PHOTO'),
-        ),
-      )
+      .where(and(eq(attachments.reportId, id)))
       .orderBy(asc(attachments.createdAt), asc(attachments.id));
+    const toAttachmentResponse = (
+      attachment: (typeof reportAttachments)[number],
+    ) => ({
+      id: attachment.id,
+      fileUrl: attachment.fileUrl,
+      createdAt: attachment.createdAt,
+    });
+    const damagePhotos = reportAttachments
+      .filter((attachment) => attachment.purpose === 'DAMAGE_PHOTO')
+      .map(toAttachmentResponse);
+    const repairPhotos = reportAttachments
+      .filter((attachment) => attachment.purpose === 'REPAIR_PHOTO')
+      .map(toAttachmentResponse);
+    const receipt = reportAttachments.find(
+      (attachment) => attachment.purpose === 'RECEIPT',
+    );
     const assignment = row.assignmentId
       ? {
           id: row.assignmentId,
@@ -446,7 +458,12 @@ export class ReportsRepository {
         ? { id: row.closedById, name: row.closedByName! }
         : null,
       assignment,
-      damagePhotos: photos,
+      damagePhotos,
+      repairPhotos,
+      receipt:
+        actor.role === 'RESIDENT' || !receipt
+          ? null
+          : toAttachmentResponse(receipt),
     };
     if (actor.role !== 'ADMIN') {
       const {

@@ -48,17 +48,18 @@ Technician task access and the atomic start-work action with an estimated arriva
 
 ## Environment
 
-| Variable                      | Default                                    | Description                                                                     |
-| ----------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
-| `NODE_ENV`                    | `development`                              | `development`, `test`, or `production`.                                         |
-| `PORT`                        | `3001`                                     | HTTP port, from 1 to 65535.                                                     |
-| `CORS_ORIGINS`                | `http://localhost:5173` outside production | Comma-separated exact HTTP(S) origins. Required in production.                  |
-| `DATABASE_URL`                | —                                          | PostgreSQL connection URL. Required to start the API and run database commands. |
-| `SEED_PROPERTY_NAME`          | —                                          | Initial property name used only by `db:seed`.                                   |
-| `SEED_PROPERTY_ADDRESS`       | —                                          | Initial property address used only by `db:seed`.                                |
-| `SEED_ADMIN_NAME`             | —                                          | Initial Admin display name used only by `db:seed`.                              |
-| `SEED_ADMIN_LOGIN_IDENTIFIER` | —                                          | Initial Admin login, normalized to lowercase.                                   |
-| `SEED_ADMIN_PASSWORD`         | —                                          | Initial Admin password, at least 12 characters; stored as an Argon2id hash.     |
+| Variable                      | Default                                    | Description                                                                      |
+| ----------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------- |
+| `NODE_ENV`                    | `development`                              | `development`, `test`, or `production`.                                          |
+| `PORT`                        | `3001`                                     | HTTP port, from 1 to 65535.                                                      |
+| `CORS_ORIGINS`                | `http://localhost:5173` outside production | Comma-separated exact HTTP(S) origins. Required in production.                   |
+| `DATABASE_URL`                | —                                          | PostgreSQL connection URL. Required to start the API and run database commands.  |
+| `UPLOADTHING_TOKEN`           | —                                          | Server-only UploadThing credential. Required in production and for file uploads. |
+| `SEED_PROPERTY_NAME`          | —                                          | Initial property name used only by `db:seed`.                                    |
+| `SEED_PROPERTY_ADDRESS`       | —                                          | Initial property address used only by `db:seed`.                                 |
+| `SEED_ADMIN_NAME`             | —                                          | Initial Admin display name used only by `db:seed`.                               |
+| `SEED_ADMIN_LOGIN_IDENTIFIER` | —                                          | Initial Admin login, normalized to lowercase.                                    |
+| `SEED_ADMIN_PASSWORD`         | —                                          | Initial Admin password, at least 12 characters; stored as an Argon2id hash.      |
 
 CORS allows credentials for session cookies and only returns access headers to configured origins. Do not use `*` with credentialed requests.
 
@@ -69,6 +70,7 @@ NODE_ENV=development
 PORT=3001
 CORS_ORIGINS=http://localhost:5173
 DATABASE_URL=postgresql://<db_user>:<url_encoded_db_password>@localhost:5432/<db_name>
+UPLOADTHING_TOKEN=<private-uploadthing-token>
 
 SEED_PROPERTY_NAME=Properti Lokal
 SEED_PROPERTY_ADDRESS=Alamat properti lokal
@@ -77,7 +79,7 @@ SEED_ADMIN_LOGIN_IDENTIFIER=admin@example.test
 SEED_ADMIN_PASSWORD=<private-random-password-at-least-12-characters>
 ```
 
-Replace every `<...>` placeholder with your local database values and a unique password before running commands. URL-encode special characters in the database username or password. `example.test` is a reserved example domain; use the login identifier you intend to use locally.
+Replace every `<...>` placeholder with your local database values, UploadThing token, and a unique password before running commands. URL-encode special characters in the database username or password. `example.test` is a reserved example domain; use the login identifier you intend to use locally. `UPLOADTHING_TOKEN` is server-only and required in production.
 
 ## Commands
 

@@ -16,12 +16,18 @@ const rawEnvironmentSchema = z.object({
     .default(3001),
   CORS_ORIGINS: z.string().optional(),
   DATABASE_URL: z.string().optional(),
+  UPLOADTHING_TOKEN: z.preprocess(
+    (value: unknown) =>
+      typeof value === 'string' && value.trim() === '' ? undefined : value,
+    z.string().trim().min(1).optional(),
+  ),
 });
 
 export interface ApiEnvironment {
   NODE_ENV: 'development' | 'test' | 'production';
   PORT: number;
   CORS_ORIGINS: string[];
+  UPLOADTHING_TOKEN?: string;
 }
 
 export function getApiEnvironment(config: ConfigService): ApiEnvironment {
@@ -45,7 +51,7 @@ export function validateEnvironment(
     throw new Error(`Invalid environment configuration: ${issues}`);
   }
 
-  const { NODE_ENV, CORS_ORIGINS } = parsed.data;
+  const { NODE_ENV, CORS_ORIGINS, UPLOADTHING_TOKEN } = parsed.data;
   const databaseUrl = parsed.data.DATABASE_URL?.trim();
   if (databaseUrl) {
     let parsedDatabaseUrl: URL;
@@ -86,6 +92,10 @@ export function validateEnvironment(
     );
   }
 
+  if (NODE_ENV === 'production' && !UPLOADTHING_TOKEN) {
+    throw new Error('UPLOADTHING_TOKEN is required in production');
+  }
+
   const normalizedOrigins = origins.map((origin) => {
     let parsedOrigin: URL;
     try {
@@ -114,6 +124,7 @@ export function validateEnvironment(
     NODE_ENV: parsed.data.NODE_ENV,
     PORT: parsed.data.PORT,
     CORS_ORIGINS: [...new Set(normalizedOrigins)],
+    ...(UPLOADTHING_TOKEN ? { UPLOADTHING_TOKEN } : {}),
     ...(databaseUrl ? { DATABASE_URL: databaseUrl } : {}),
   };
 }

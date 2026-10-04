@@ -20,7 +20,24 @@ Kategori: `AC`, `ELECTRICAL`, `PLUMBING`, `FURNITURE`, `BUILDING`, `OTHER`. Prio
 
 Resident hanya dapat memilih unit non-arsip yang sedang ditempatinya. Status awal menjadi `REPORTED`, prioritas disimpan sebagai `proposedPriority`, sedangkan `finalPriority` bernilai `null`. Admin dapat memilih unit non-arsip di properti yang dikonfigurasi, termasuk unit kosong; status awal menjadi `VERIFIED` dan prioritas menjadi `finalPriority`. Technician menerima `403`.
 
-Respons sukses `201` mengembalikan detail laporan. Nomor laporan dibuat backend dengan format `RPT-0000000001`. Upload foto adalah langkah terpisah setelah laporan tercipta melalui BE-11. Kirim URL file lewat alur upload yang disediakan; jangan mengirimnya pada body create. Detail laporan memuat foto ber-tujuan `DAMAGE_PHOTO` yang sudah tersimpan.
+Respons sukses `201` mengembalikan detail laporan. Nomor laporan dibuat backend dengan format `RPT-0000000001`. Foto diunggah setelah laporan tercipta menggunakan `POST /api/reports/:id/damage-photos` dengan `multipart/form-data` berisi field `file`. Backend menyimpan URL UploadThing dan relasinya sebelum mengembalikan `{ id, fileUrl, createdAt }`. Jangan mengirim URL file lewat body create.
+
+Client dapat menampilkan URL yang tersimpan dengan `<img src={photo.fileUrl} alt="Foto laporan" />`. Detail laporan mengembalikan `damagePhotos`, `repairPhotos`, dan `receipt`; nota berisi URL hanya untuk Admin dan Teknisi pemilik assignment.
+
+```ts
+const form = new FormData();
+form.append('file', imageFile);
+const response = await fetch(`/api/reports/${reportId}/damage-photos`, {
+  method: 'POST',
+  credentials: 'include',
+  body: form,
+});
+if (!response.ok) throw await response.json();
+const attachment: { id: string; fileUrl: string; createdAt: string } =
+  await response.json();
+```
+
+Gunakan proxy `/api` menuju backend saat menjalankan Vite dan reverse proxy origin yang sama saat deployment. Backend menerima satu file JPEG/PNG/WebP maksimal 5 MiB; Teknisi juga dapat mengunggah PDF sebagai nota. Batas foto adalah lima untuk setiap tujuan per laporan. Upload foto hasil dan nota tersedia pada laporan `IN_PROGRESS` bagi Teknisi pemilik assignment.
 
 ## Daftar dan detail
 

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { z } from 'zod';
 import { PropertyRepository } from './property.repository.js';
 import type { PropertyPatchInput } from './property.schemas.js';
@@ -22,16 +26,20 @@ export class PropertyService {
     }
     return property;
   }
-  // Internal only: BE-11 must verify the upload callback and Admin authorization
-  // before calling this. No HTTP route accepts a client-supplied logo URL.
+  // Internal only: callers must upload and verify the file before calling this.
   async updateLogoFromVerifiedUpload(
+    actorId: string,
     url: string,
-  ): Promise<PropertyResponseDto> {
+  ): Promise<{ property: PropertyResponseDto; previousUrl: string | null }> {
     const logoUrl = z.url({ protocol: /^https$/ }).parse(url);
-    const property = await this.repository.updateProperty({ logoUrl });
-    if (!property) {
+    const result = await this.repository.updateLogoFromVerifiedUpload(
+      actorId,
+      logoUrl,
+    );
+    if (result.kind === 'actor-changed') throw new ForbiddenException();
+    if (result.kind === 'property-not-found') {
       throw new NotFoundException();
     }
-    return property;
+    return { property: result.property, previousUrl: result.previousUrl };
   }
 }

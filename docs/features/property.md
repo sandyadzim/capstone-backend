@@ -67,4 +67,4 @@ await fetch('http://localhost:3001/api/property', {
 
 ## Integrasi upload logo
 
-Unggah dan penggantian logo dikerjakan pada BE-11. Callback UploadThing harus memvalidasi file dan otorisasi Admin sebelum memanggil `PropertyService.updateLogoFromVerifiedUpload(url)`. Endpoint REST profil hanya menerima `logoUrl: null` untuk menghapus logo; URL unggahan tidak diterima langsung dari klien.
+Admin dapat mengunggah atau mengganti logo melalui `PUT /api/property/logo` dengan `multipart/form-data` berisi satu field `file`. Backend memvalidasi isi gambar, mengunggahnya ke UploadThing, lalu memperbarui `logoUrl` sebelum mengembalikan profil. URL logo dari payload JSON tetap ditolak; gunakan `logoUrl: null` pada `PATCH /api/property` untuk menghapus referensi logo.

@@ -28,6 +28,25 @@ describe('validateEnvironment', () => {
     );
   });
 
+  it('requires an UploadThing token in production and accepts an empty development placeholder', () => {
+    expect(validateEnvironment({ UPLOADTHING_TOKEN: '' })).not.toHaveProperty(
+      'UPLOADTHING_TOKEN',
+    );
+    expect(() =>
+      validateEnvironment({
+        NODE_ENV: 'production',
+        CORS_ORIGINS: 'https://app.example',
+      }),
+    ).toThrow('UPLOADTHING_TOKEN is required in production');
+    expect(
+      validateEnvironment({
+        NODE_ENV: 'production',
+        CORS_ORIGINS: 'https://app.example',
+        UPLOADTHING_TOKEN: 'server-secret',
+      }).UPLOADTHING_TOKEN,
+    ).toBe('server-secret');
+  });
+
   it('rejects invalid ports and non-origin CORS URLs', () => {
     expect(() => validateEnvironment({ PORT: '70000' })).toThrow(
       'Invalid environment configuration',

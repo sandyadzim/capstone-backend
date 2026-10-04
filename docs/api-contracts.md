@@ -42,33 +42,37 @@ Status HTTP dan `code` dapat dipakai untuk alur aplikasi. `message` ditujukan un
 
 ## Route aktif
 
-| Method   | Path                           | Akses                                                     | Sukses                                            |
-| -------- | ------------------------------ | --------------------------------------------------------- | ------------------------------------------------- |
-| `POST`   | `/api/auth/login`              | Publik; memerlukan origin tepercaya untuk request browser | `200`, aktor dikembalikan dan cookie sesi disetel |
-| `GET`    | `/api/auth/me`                 | Session cookie                                            | `200`, aktor aktif                                |
-| `POST`   | `/api/auth/logout`             | Publik; menghapus sesi saat tersedia                      | `204`                                             |
-| `GET`    | `/api/health`                  | Publik                                                    | `200`, `{ "status": "ok" }`                       |
-| `GET`    | `/api/property`                | Semua role dengan sesi                                    | `200`, profil                                     |
-| `PATCH`  | `/api/property`                | ADMIN                                                     | `200`, profil diperbarui                          |
-| `GET`    | `/api/units`                   | ADMIN                                                     | `200`, `{ data, meta }`                           |
-| `POST`   | `/api/units`                   | ADMIN                                                     | `201`, unit                                       |
-| `GET`    | `/api/units/:id`               | ADMIN                                                     | `200`, detail unit                                |
-| `PATCH`  | `/api/units/:id`               | ADMIN                                                     | `200`, unit diperbarui                            |
-| `POST`   | `/api/units/:id/archive`       | ADMIN                                                     | `200`, unit diarsipkan                            |
-| `PUT`    | `/api/units/:id/resident`      | ADMIN                                                     | `200`, unit tujuan dengan penghuni                |
-| `DELETE` | `/api/units/:id/resident`      | ADMIN                                                     | `200`, unit setelah pelepasan                     |
-| `GET`    | `/api/accounts`                | ADMIN                                                     | `200`, `{ data, meta }` daftar akun               |
-| `POST`   | `/api/accounts`                | ADMIN                                                     | `201`, akun dibuat                                |
-| `GET`    | `/api/accounts/:id`            | ADMIN                                                     | `200`, detail akun                                |
-| `PATCH`  | `/api/accounts/:id`            | ADMIN                                                     | `200`, akun diperbarui                            |
-| `POST`   | `/api/accounts/:id/deactivate` | ADMIN                                                     | `200`, akun dinonaktifkan                         |
-| `GET`    | `/api/reports`                 | Session; data dibatasi menurut role                       | `200`, `{ data, meta }` daftar laporan            |
-| `POST`   | `/api/reports`                 | ADMIN, RESIDENT                                           | `201`, laporan dibuat                             |
-| `GET`    | `/api/reports/:id`             | Session; laporan harus berada dalam cakupan aktor         | `200`, detail laporan                             |
-| `POST`   | `/api/reports/:id/verify`      | ADMIN                                                     | `200`, laporan terverifikasi                      |
-| `POST`   | `/api/reports/:id/reject`      | ADMIN                                                     | `200`, laporan ditolak                            |
-| `POST`   | `/api/reports/:id/assign`      | ADMIN                                                     | `200`, Teknisi ditugaskan                         |
-| `POST`   | `/api/reports/:id/start`       | TECHNICIAN; harus pemilik assignment                      | `200`, estimasi disimpan dan status `IN_PROGRESS` |
+| Method   | Path                             | Akses                                                     | Sukses                                            |
+| -------- | -------------------------------- | --------------------------------------------------------- | ------------------------------------------------- |
+| `POST`   | `/api/auth/login`                | Publik; memerlukan origin tepercaya untuk request browser | `200`, aktor dikembalikan dan cookie sesi disetel |
+| `GET`    | `/api/auth/me`                   | Session cookie                                            | `200`, aktor aktif                                |
+| `POST`   | `/api/auth/logout`               | Publik; menghapus sesi saat tersedia                      | `204`                                             |
+| `GET`    | `/api/health`                    | Publik                                                    | `200`, `{ "status": "ok" }`                       |
+| `GET`    | `/api/property`                  | Semua role dengan sesi                                    | `200`, profil                                     |
+| `PATCH`  | `/api/property`                  | ADMIN                                                     | `200`, profil diperbarui                          |
+| `GET`    | `/api/units`                     | ADMIN                                                     | `200`, `{ data, meta }`                           |
+| `POST`   | `/api/units`                     | ADMIN                                                     | `201`, unit                                       |
+| `GET`    | `/api/units/:id`                 | ADMIN                                                     | `200`, detail unit                                |
+| `PATCH`  | `/api/units/:id`                 | ADMIN                                                     | `200`, unit diperbarui                            |
+| `POST`   | `/api/units/:id/archive`         | ADMIN                                                     | `200`, unit diarsipkan                            |
+| `PUT`    | `/api/units/:id/resident`        | ADMIN                                                     | `200`, unit tujuan dengan penghuni                |
+| `DELETE` | `/api/units/:id/resident`        | ADMIN                                                     | `200`, unit setelah pelepasan                     |
+| `GET`    | `/api/accounts`                  | ADMIN                                                     | `200`, `{ data, meta }` daftar akun               |
+| `POST`   | `/api/accounts`                  | ADMIN                                                     | `201`, akun dibuat                                |
+| `GET`    | `/api/accounts/:id`              | ADMIN                                                     | `200`, detail akun                                |
+| `PATCH`  | `/api/accounts/:id`              | ADMIN                                                     | `200`, akun diperbarui                            |
+| `POST`   | `/api/accounts/:id/deactivate`   | ADMIN                                                     | `200`, akun dinonaktifkan                         |
+| `GET`    | `/api/reports`                   | Session; data dibatasi menurut role                       | `200`, `{ data, meta }` daftar laporan            |
+| `POST`   | `/api/reports`                   | ADMIN, RESIDENT                                           | `201`, laporan dibuat                             |
+| `GET`    | `/api/reports/:id`               | Session; laporan harus berada dalam cakupan aktor         | `200`, detail laporan                             |
+| `POST`   | `/api/reports/:id/verify`        | ADMIN                                                     | `200`, laporan terverifikasi                      |
+| `POST`   | `/api/reports/:id/reject`        | ADMIN                                                     | `200`, laporan ditolak                            |
+| `POST`   | `/api/reports/:id/assign`        | ADMIN                                                     | `200`, Teknisi ditugaskan                         |
+| `POST`   | `/api/reports/:id/start`         | TECHNICIAN; harus pemilik assignment                      | `200`, estimasi disimpan dan status `IN_PROGRESS` |
+| `POST`   | `/api/reports/:id/damage-photos` | ADMIN atau RESIDENT sesuai akses laporan                  | `201`, URL dan relasi foto kerusakan tersimpan    |
+| `POST`   | `/api/reports/:id/repair-photos` | TECHNICIAN pemilik assignment, laporan `IN_PROGRESS`      | `201`, URL dan relasi foto hasil tersimpan        |
+| `PUT`    | `/api/reports/:id/receipt`       | TECHNICIAN pemilik assignment, laporan `IN_PROGRESS`      | `200`, nota dipasang atau diganti                 |
+| `PUT`    | `/api/property/logo`             | ADMIN                                                     | `200`, profil dengan URL logo                     |
 
 Detail profil ada di [panduan property](features/property.md); payload unit, status hunian, penempatan, dan arsip ada di [panduan unit](features/units.md); akun dan peran ada di [panduan akun](features/accounts.md). Mutasi memakai body strict; PATCH akun/unit minimal satu field. Profil hanya menerima `logoUrl: null` untuk penghapusan; unggah/ganti logo ditambahkan BE-11.
 
@@ -76,7 +80,7 @@ Detail payload auth dan contoh pemakaian browser ada di [panduan autentikasi](fe
 
 Create, review, detail, pagination laporan, pembatasan akses per role, dan bentuk respons tersedia di [panduan laporan](features/reports.md). Nomor laporan dialokasikan backend dari sequence PostgreSQL.
 
-Daftar tugas dan aksi mulai kerja Teknisi tersedia di [panduan tugas Teknisi](features/technician-work.md). Estimasi wajib memakai timestamp ISO 8601 dengan zona waktu.
+Daftar tugas dan aksi mulai kerja Teknisi tersedia di [panduan tugas Teknisi](features/technician-work.md). Estimasi wajib memakai timestamp ISO 8601 dengan zona waktu. Upload file memakai multipart field `file`, sesi yang sama dengan REST API, dan mengembalikan URL publik setelah URL tersimpan. Nilai `UPLOADTHING_TOKEN` hanya disetel di environment backend.
 
 ## Enum domain
 
