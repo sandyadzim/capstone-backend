@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   reportCreateSchema,
+  reportAssignSchema,
   reportIdSchema,
   reportListSchema,
   reportRejectSchema,
@@ -105,6 +106,31 @@ describe('report schemas', () => {
       { finalPriority: 'HIGH', rejectionReason: 'Duplicate', reviewerId: 'id' },
     ]) {
       expect(reportRejectSchema.safeParse(input).success).toBe(false);
+    }
+  });
+
+  it('validates technician assignment input and normalizes optional notes', () => {
+    const technicianUserId = '33000000-0000-4000-8000-000000000002';
+    expect(
+      reportAssignSchema.parse({
+        technicianUserId: technicianUserId.toUpperCase(),
+        note: '  Please inspect the valve.  ',
+      }),
+    ).toEqual({
+      technicianUserId,
+      note: 'Please inspect the valve.',
+    });
+    expect(reportAssignSchema.parse({ technicianUserId })).toEqual({
+      technicianUserId,
+    });
+    for (const input of [
+      {},
+      { technicianUserId: 'invalid' },
+      { technicianUserId, note: '  ' },
+      { technicianUserId, note: null },
+      { technicianUserId, status: 'ASSIGNED' },
+    ]) {
+      expect(reportAssignSchema.safeParse(input).success).toBe(false);
     }
   });
 });

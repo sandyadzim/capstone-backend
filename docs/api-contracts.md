@@ -67,6 +67,7 @@ Status HTTP dan `code` dapat dipakai untuk alur aplikasi. `message` ditujukan un
 | `GET`    | `/api/reports/:id`             | Session; laporan harus berada dalam cakupan aktor         | `200`, detail laporan                             |
 | `POST`   | `/api/reports/:id/verify`      | ADMIN                                                     | `200`, laporan terverifikasi                      |
 | `POST`   | `/api/reports/:id/reject`      | ADMIN                                                     | `200`, laporan ditolak                            |
+| `POST`   | `/api/reports/:id/assign`      | ADMIN                                                     | `200`, Teknisi ditugaskan                         |
 
 Detail profil ada di [panduan property](features/property.md); payload unit, status hunian, penempatan, dan arsip ada di [panduan unit](features/units.md); akun dan peran ada di [panduan akun](features/accounts.md). Mutasi memakai body strict; PATCH akun/unit minimal satu field. Profil hanya menerima `logoUrl: null` untuk penghapusan; unggah/ganti logo ditambahkan BE-11.
 

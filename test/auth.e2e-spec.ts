@@ -261,6 +261,7 @@ describe('Authentication and sessions (e2e)', () => {
       '/api/property',
       '/api/reports',
       '/api/reports/{id}',
+      '/api/reports/{id}/assign',
       '/api/reports/{id}/reject',
       '/api/reports/{id}/verify',
       '/api/units',
@@ -333,6 +334,14 @@ describe('Authentication and sessions (e2e)', () => {
     expect(reject.responses['409']).toBeDefined();
     expect(JSON.stringify(reject.requestBody)).toContain('rejectionReason');
     expect(reject.security).toEqual([{ [cookieSchemeName!]: [] }]);
+
+    const assign = document.paths['/api/reports/{id}/assign'].post;
+    expect(assign.responses['200']).toBeDefined();
+    expect(assign.responses['403']).toBeDefined();
+    expect(assign.responses['409']).toBeDefined();
+    expect(JSON.stringify(assign.requestBody)).toContain('technicianUserId');
+    expect(JSON.stringify(assign.requestBody)).toContain('note');
+    expect(assign.security).toEqual([{ [cookieSchemeName!]: [] }]);
   });
 
   it('deletes the server session on logout', async () => {

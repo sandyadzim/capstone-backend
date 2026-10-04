@@ -72,6 +72,28 @@ Content-Type: application/json
 
 `finalPriority` harus berupa `LOW`, `MEDIUM`, atau `HIGH`. `rejectionReason` wajib berisi teks setelah spasi tepi dibuang. `reviewNote` boleh dihilangkan; bila dikirim, isinya juga harus berupa teks non-kosong setelah trimming. Field tambahan seperti `status` dan `reviewedByUserId` ditolak. Respons Admin mencakup `reviewNote` dan `reviewedBy`; Resident dan Technician tidak menerima kedua field tersebut. `rejectionReason` tersedia pada detail laporan sesuai cakupan akses aktor.
 
+## Menugaskan Teknisi
+
+Admin dapat menugaskan satu Teknisi aktif pada laporan `VERIFIED`:
+
+```http
+POST /api/reports/{id}/assign
+Content-Type: application/json
+```
+
+```json
+{
+  "technicianUserId": "33000000-0000-4000-8000-000000000002",
+  "note": "Periksa sambungan pipa di bawah wastafel."
+}
+```
+
+`technicianUserId` wajib berupa UUID akun dengan role `TECHNICIAN` yang aktif. `note` opsional; bila dikirim, teks dipangkas dan tidak boleh kosong. Field tambahan seperti `status`, `assignedByUserId`, dan `assignedAt` ditolak. Pilihan Teknisi aktif tersedia melalui `GET /api/accounts?role=TECHNICIAN&isActive=true`.
+
+Sukses mengembalikan `200` dengan status `ASSIGNED` dan detail assignment (`technician`, `assignedBy`, `assignedAt`, `estimatedArrivalAt`, `note`). Estimasi awal bernilai `null`. Catatan assignment ditampilkan untuk semua aktor yang berhak melihat detail laporan; identitas `assignedBy` hanya tersedia pada respons Admin. Teknisi yang ditugaskan dapat membaca laporan pada daftar dan detail. Teknisi lain mendapat `404`.
+
+Laporan yang hilang/di luar properti dan akun Teknisi yang tidak ditemukan menghasilkan `404 NOT_FOUND`. Akun nonaktif atau bukan Teknisi, laporan yang belum `VERIFIED`, dan laporan yang sudah memiliki assignment menghasilkan `409 CONFLICT`. Request assignment berulang juga menghasilkan konflik; ambil ulang detail laporan untuk melihat keadaan terbaru.
+
 ## Contoh frontend
 
 ```ts

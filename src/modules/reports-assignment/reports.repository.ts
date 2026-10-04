@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, asc, count, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseService } from '../database/database.service.js';
 import type {
@@ -18,6 +18,7 @@ import {
 import { INITIAL_PROPERTY_ID } from '../property/property.constants.js';
 import type {
   ReportCreateInput,
+  ReportAssignInput,
   ReportListInput,
   ReportRejectInput,
   ReportVerifyInput,
@@ -199,6 +200,79 @@ export class ReportsRepository {
         kind: 'reviewed' as const,
         report: (await this.findAccessible(report.id, actor, transaction))!,
       };
+    });
+  }
+
+  async assign(
+    id: string,
+    actor: AuthenticatedActor,
+    input: ReportAssignInput,
+  ) {
+    return this.database.transaction(async (transaction) => {
+      const accountIds = [
+        ...new Set([actor.id, input.technicianUserId]),
+      ].sort();
+      const lockedAccounts = await transaction
+        .select({ id: users.id, role: users.role, isActive: users.isActive })
+        .from(users)
+        .where(inArray(users.id, accountIds))
+        .orderBy(asc(users.id))
+        .for('update');
+      const admin = lockedAccounts.find((account) => account.id === actor.id);
+      if (!admin?.isActive || admin.role !== 'ADMIN') {
+        return { kind: 'actor-changed' as const };
+      }
+      const technician = lockedAccounts.find(
+        (account) => account.id === input.technicianUserId,
+      );
+      if (!technician) return { kind: 'technician-not-found' as const };
+      if (technician.role !== 'TECHNICIAN' || !technician.isActive) {
+        return { kind: 'technician-unavailable' as const };
+      }
+
+      const [report] = await transaction
+        .select({ id: damageReports.id, status: damageReports.status })
+        .from(damageReports)
+        .innerJoin(units, eq(units.id, damageReports.unitId))
+        .where(
+          and(
+            eq(damageReports.id, id),
+            eq(units.propertyId, INITIAL_PROPERTY_ID),
+          ),
+        )
+        .for('update', { of: damageReports });
+      if (!report) return { kind: 'report-not-found' as const };
+      if (report.status !== 'VERIFIED') {
+        return { kind: 'status-conflict' as const, status: report.status };
+      }
+
+      const [existingAssignment] = await transaction
+        .select({ id: assignments.id })
+        .from(assignments)
+        .where(eq(assignments.reportId, report.id))
+        .limit(1);
+      if (existingAssignment) return { kind: 'assignment-exists' as const };
+
+      const [assignment] = await transaction
+        .insert(assignments)
+        .values({
+          reportId: report.id,
+          technicianUserId: technician.id,
+          assignedByUserId: admin.id,
+          note: input.note ?? null,
+        })
+        .onConflictDoNothing({ target: assignments.reportId })
+        .returning({ id: assignments.id });
+      if (!assignment) return { kind: 'assignment-exists' as const };
+
+      await transaction
+        .update(damageReports)
+        .set({ status: 'ASSIGNED' })
+        .where(eq(damageReports.id, report.id));
+
+      const detail = await this.findAccessible(report.id, actor, transaction);
+      if (!detail) throw new Error('Assigned report became inaccessible');
+      return { kind: 'assigned' as const, report: detail };
     });
   }
 

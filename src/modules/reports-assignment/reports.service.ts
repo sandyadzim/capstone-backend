@@ -9,6 +9,7 @@ import { DatabaseService } from '../database/database.service.js';
 import { ReportsRepository } from './reports.repository.js';
 import type {
   ReportCreateInput,
+  ReportAssignInput,
   ReportListInput,
   ReportRejectInput,
   ReportVerifyInput,
@@ -54,6 +55,34 @@ export class ReportsService {
     input: ReportRejectInput,
   ) {
     return this.review(actor, id, { kind: 'reject', input });
+  }
+
+  async assign(
+    actor: AuthenticatedActor,
+    id: string,
+    input: ReportAssignInput,
+  ) {
+    if (actor.role !== 'ADMIN') throw new ForbiddenException();
+    const result = await this.repository.assign(id, actor, input);
+    if (result.kind === 'actor-changed') throw new ForbiddenException();
+    if (
+      result.kind === 'report-not-found' ||
+      result.kind === 'technician-not-found'
+    ) {
+      throw new NotFoundException();
+    }
+    if (result.kind === 'technician-unavailable') {
+      conflict('Only active Technician accounts can receive assignments');
+    }
+    if (result.kind === 'status-conflict') {
+      conflict(
+        `Report status is ${result.status}; only VERIFIED reports can be assigned`,
+      );
+    }
+    if (result.kind === 'assignment-exists') {
+      conflict('Report already has an assignment');
+    }
+    return result.report;
   }
 
   private async review(

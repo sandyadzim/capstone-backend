@@ -33,6 +33,7 @@ import {
 } from './report.dto.js';
 import {
   reportCreateSchema,
+  reportAssignSchema,
   reportIdSchema,
   reportListSchema,
   reportRejectSchema,
@@ -40,6 +41,7 @@ import {
 } from './report.schemas.js';
 import type {
   ReportCreateInput,
+  ReportAssignInput,
   ReportIdInput,
   ReportListInput,
   ReportRejectInput,
@@ -143,6 +145,33 @@ export class ReportsController {
     @Body({ schema: reportRejectSchema }) input: ReportRejectInput,
   ) {
     return this.reports.reject(actor, params.id, input);
+  }
+
+  @Post(':id/assign')
+  @HttpCode(200)
+  @Roles('ADMIN')
+  @ApiOperation({
+    summary: 'Assign an active Technician to a verified report (Admin)',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['technicianUserId'],
+      properties: {
+        technicianUserId: { type: 'string', format: 'uuid' },
+        note: { type: 'string', minLength: 1 },
+      },
+    },
+  })
+  @ApiOkResponse({ type: ReportDetailResponseDto })
+  @ApiConflictResponse({ type: ApiErrorResponseDto })
+  assign(
+    @CurrentUser() actor: AuthenticatedActor,
+    @Param({ schema: reportIdSchema }) params: ReportIdInput,
+    @Body({ schema: reportAssignSchema }) input: ReportAssignInput,
+  ) {
+    return this.reports.assign(actor, params.id, input);
   }
 
   @Post()

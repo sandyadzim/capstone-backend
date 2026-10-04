@@ -4,7 +4,9 @@ import {
   attachments,
   damageReports,
   properties,
+  users,
 } from '../src/modules/database/schema.js';
+import { ReportsService } from '../src/modules/reports-assignment/reports.service.js';
 import { usePropertyUnitsContext } from './support/property-units-context.js';
 
 describe('Reports API (e2e)', () => {
@@ -514,5 +516,401 @@ describe('Reports API (e2e)', () => {
       .from(damageReports)
       .where(eq(damageReports.id, report.id));
     expect(after).toEqual(before);
+  });
+
+  it('assigns Admin and Resident reports atomically and grants access to the selected Technician', async () => {
+    const adminUnit = await ctx.createUnit('A-ASSIGN-01', {
+      activeResidentUserId: ctx.ids.actorIds.RESIDENT,
+    });
+    const adminReport = await ctx
+      .api('post', '/api/reports')
+      .send(payload(adminUnit.id, 'Admin created report'))
+      .expect(201);
+    const assignedAdminReport = await ctx
+      .api('post', `/api/reports/${adminReport.body.id}/assign`)
+      .send({
+        technicianUserId: ctx.ids.actorIds.TECHNICIAN,
+        note: '  Check the replacement part.  ',
+      })
+      .expect(200);
+    expect(assignedAdminReport.body).toMatchObject({
+      status: 'ASSIGNED',
+      assignment: {
+        technician: { id: ctx.ids.actorIds.TECHNICIAN, name: 'TECHNICIAN' },
+        assignedBy: { id: ctx.ids.actorIds.ADMIN, name: 'ADMIN' },
+        note: 'Check the replacement part.',
+        estimatedArrivalAt: null,
+      },
+    });
+    const [adminRecord] = await ctx.db
+      .select()
+      .from(damageReports)
+      .where(eq(damageReports.id, adminReport.body.id));
+    const adminAssignments = await ctx.db
+      .select()
+      .from(assignments)
+      .where(eq(assignments.reportId, adminReport.body.id));
+    expect(adminRecord.status).toBe('ASSIGNED');
+    expect(adminAssignments).toHaveLength(1);
+    expect(adminAssignments[0]).toMatchObject({
+      technicianUserId: ctx.ids.actorIds.TECHNICIAN,
+      assignedByUserId: ctx.ids.actorIds.ADMIN,
+      estimatedArrivalAt: null,
+      note: 'Check the replacement part.',
+    });
+    const residentAdminDetail = await ctx
+      .api('get', `/api/reports/${adminReport.body.id}`, 'RESIDENT')
+      .expect(200);
+    expect(residentAdminDetail.body.assignment.note).toBe(
+      'Check the replacement part.',
+    );
+    expect(residentAdminDetail.body.assignment).not.toHaveProperty(
+      'assignedBy',
+    );
+    const technicianAdminDetail = await ctx
+      .api('get', `/api/reports/${adminReport.body.id}`, 'TECHNICIAN')
+      .expect(200);
+    expect(technicianAdminDetail.body.assignment.note).toBe(
+      'Check the replacement part.',
+    );
+    expect(technicianAdminDetail.body.assignment).not.toHaveProperty(
+      'assignedBy',
+    );
+
+    const residentReport = await ctx
+      .api('post', '/api/reports', 'RESIDENT')
+      .send(payload(adminUnit.id, 'Resident created report'))
+      .expect(201);
+    await ctx
+      .api('post', `/api/reports/${residentReport.body.id}/verify`)
+      .send({ finalPriority: 'HIGH' })
+      .expect(200);
+    const assignedResidentReport = await ctx
+      .api('post', `/api/reports/${residentReport.body.id}/assign`)
+      .send({ technicianUserId: ctx.ids.actorIds.TECHNICIAN })
+      .expect(200);
+    expect(assignedResidentReport.body).toMatchObject({
+      status: 'ASSIGNED',
+      assignment: {
+        technician: { id: ctx.ids.actorIds.TECHNICIAN },
+        note: null,
+        estimatedArrivalAt: null,
+      },
+    });
+
+    const technicianList = await ctx
+      .api('get', '/api/reports', 'TECHNICIAN')
+      .expect(200);
+    expect(
+      technicianList.body.data.map((item: { id: string }) => item.id),
+    ).toEqual(
+      expect.arrayContaining([adminReport.body.id, residentReport.body.id]),
+    );
+    const technicianDetail = await ctx
+      .api('get', `/api/reports/${residentReport.body.id}`, 'TECHNICIAN')
+      .expect(200);
+    expect(technicianDetail.body.assignment).toMatchObject({
+      note: null,
+      estimatedArrivalAt: null,
+    });
+    expect(technicianDetail.body.assignment).not.toHaveProperty('assignedBy');
+    const residentDetail = await ctx
+      .api('get', `/api/reports/${residentReport.body.id}`, 'RESIDENT')
+      .expect(200);
+    expect(residentDetail.body.assignment.note).toBeNull();
+    expect(residentDetail.body.assignment).not.toHaveProperty('assignedBy');
+
+    const otherTechnician = await ctx.createUnit('A-ASSIGN-03');
+    const otherReport = await ctx
+      .api('post', '/api/reports')
+      .send(payload(otherTechnician.id))
+      .expect(201);
+    await ctx.db
+      .update(users)
+      .set({ role: 'TECHNICIAN' })
+      .where(eq(users.id, ctx.ids.secondResidentId));
+    await ctx
+      .api('post', `/api/reports/${otherReport.body.id}/assign`)
+      .send({ technicianUserId: ctx.ids.secondResidentId })
+      .expect(200);
+    await ctx
+      .api('get', `/api/reports/${otherReport.body.id}`, 'TECHNICIAN')
+      .expect(404);
+    await ctx
+      .api('get', `/api/reports/${otherReport.body.id}`, 'RESIDENT')
+      .expect(404);
+    const unassignedReport = await ctx.addReport(
+      otherTechnician.id,
+      'VERIFIED',
+    );
+    await ctx
+      .api('get', `/api/reports/${unassignedReport.id}`, 'TECHNICIAN')
+      .expect(404);
+  });
+
+  it('validates assignment access, input, scope, and rechecks the Admin account', async () => {
+    const unit = await ctx.createUnit('A-ASSIGN-04');
+    const report = await ctx.addReport(unit.id, 'VERIFIED');
+    const path = `/api/reports/${report.id}/assign`;
+    const body = { technicianUserId: ctx.ids.actorIds.TECHNICIAN };
+
+    await ctx.api('post', path, null).send(body).expect(401);
+    await ctx.api('post', path, 'RESIDENT').send(body).expect(403);
+    await ctx.api('post', path, 'TECHNICIAN').send(body).expect(403);
+    await ctx
+      .api('post', `/api/reports/not-a-uuid/assign`)
+      .send(body)
+      .expect(400);
+    for (const invalidBody of [
+      {},
+      { technicianUserId: 'invalid' },
+      { ...body, status: 'ASSIGNED' },
+      { ...body, note: '  ' },
+      { ...body, note: null },
+    ]) {
+      await ctx.api('post', path).send(invalidBody).expect(400);
+    }
+    await ctx
+      .api('post', path)
+      .send({ technicianUserId: ctx.ids.missingId })
+      .expect(404);
+    await ctx
+      .api('post', path)
+      .send({ technicianUserId: ctx.ids.actorIds.RESIDENT })
+      .expect(409);
+    await ctx
+      .api('post', `/api/reports/${ctx.ids.missingId}/assign`)
+      .send(body)
+      .expect(404);
+
+    await ctx.db
+      .insert(properties)
+      .values({ id: ctx.ids.otherPropertyId, name: 'Other', address: 'Other' });
+    const foreignUnit = await ctx.createUnit('A-ASSIGN-05', {
+      propertyId: ctx.ids.otherPropertyId,
+    });
+    const foreignReport = await ctx.addReport(foreignUnit.id, 'VERIFIED');
+    await ctx
+      .api('post', `/api/reports/${foreignReport.id}/assign`)
+      .send(body)
+      .expect(404);
+
+    const staleAdmin = {
+      id: ctx.ids.actorIds.ADMIN,
+      name: 'ADMIN',
+      loginIdentifier: 'admin@example.test',
+      role: 'ADMIN' as const,
+    };
+    const reports = ctx.app.get(ReportsService);
+    for (const changedState of [
+      { isActive: false },
+      { role: 'TECHNICIAN' as const },
+    ]) {
+      await ctx.db
+        .update(users)
+        .set(changedState)
+        .where(eq(users.id, ctx.ids.actorIds.ADMIN));
+      try {
+        await expect(
+          reports.assign(staleAdmin, report.id, body),
+        ).rejects.toMatchObject({
+          status: 403,
+        });
+      } finally {
+        await ctx.db
+          .update(users)
+          .set({ isActive: true, role: 'ADMIN' })
+          .where(eq(users.id, ctx.ids.actorIds.ADMIN));
+      }
+    }
+  });
+
+  it('conflicts for every non-VERIFIED state and any existing assignment without changing records', async () => {
+    const unit = await ctx.createUnit('A-ASSIGN-06');
+    for (const status of [
+      'REPORTED',
+      'REJECTED',
+      'ASSIGNED',
+      'IN_PROGRESS',
+      'COMPLETED',
+      'CLOSED',
+    ] as const) {
+      const report = await ctx.addReport(unit.id, status);
+      const [before] = await ctx.db
+        .select()
+        .from(damageReports)
+        .where(eq(damageReports.id, report.id));
+      await ctx
+        .api('post', `/api/reports/${report.id}/assign`)
+        .send({ technicianUserId: ctx.ids.actorIds.TECHNICIAN })
+        .expect(409);
+      const [after] = await ctx.db
+        .select()
+        .from(damageReports)
+        .where(eq(damageReports.id, report.id));
+      expect(after).toEqual(before);
+      expect(
+        await ctx.db
+          .select()
+          .from(assignments)
+          .where(eq(assignments.reportId, report.id)),
+      ).toHaveLength(0);
+    }
+
+    const report = await ctx.addReport(unit.id, 'VERIFIED');
+    await ctx.db.insert(assignments).values({
+      reportId: report.id,
+      technicianUserId: ctx.ids.actorIds.TECHNICIAN,
+      assignedByUserId: ctx.ids.actorIds.ADMIN,
+      note: 'Existing assignment',
+    });
+    const [before] = await ctx.db
+      .select()
+      .from(damageReports)
+      .where(eq(damageReports.id, report.id));
+    await ctx.db
+      .update(users)
+      .set({ role: 'TECHNICIAN', isActive: true })
+      .where(eq(users.id, ctx.ids.secondResidentId));
+    for (const technicianUserId of [
+      ctx.ids.actorIds.TECHNICIAN,
+      ctx.ids.secondResidentId,
+    ]) {
+      await ctx
+        .api('post', `/api/reports/${report.id}/assign`)
+        .send({ technicianUserId })
+        .expect(409);
+      const [after] = await ctx.db
+        .select()
+        .from(damageReports)
+        .where(eq(damageReports.id, report.id));
+      expect(after).toEqual(before);
+    }
+    expect(
+      await ctx.db
+        .select()
+        .from(assignments)
+        .where(eq(assignments.reportId, report.id)),
+    ).toHaveLength(1);
+  });
+
+  it('coordinates with BE-05 account changes before and after assignment', async () => {
+    const unit = await ctx.createUnit('A-ASSIGN-07');
+    const report = await ctx.addReport(unit.id, 'VERIFIED');
+    await ctx
+      .api('post', `/api/reports/${report.id}/assign`)
+      .send({ technicianUserId: ctx.ids.actorIds.TECHNICIAN })
+      .expect(200);
+    await ctx
+      .api('post', `/api/accounts/${ctx.ids.actorIds.TECHNICIAN}/deactivate`)
+      .expect(409);
+    await ctx
+      .api('patch', `/api/accounts/${ctx.ids.actorIds.TECHNICIAN}`)
+      .send({ role: 'RESIDENT' })
+      .expect(409);
+
+    const inactiveTechnician = await ctx
+      .api('post', '/api/accounts')
+      .send({
+        name: 'BE-09 Inactive Technician',
+        loginIdentifier: 'be09-inactive-technician@example.test',
+        password: 'test-only-new-password',
+        role: 'TECHNICIAN',
+      })
+      .expect(201);
+    await ctx
+      .api('post', `/api/accounts/${inactiveTechnician.body.id}/deactivate`)
+      .expect(200);
+    const secondReport = await ctx.addReport(unit.id, 'VERIFIED');
+    await ctx
+      .api('post', `/api/reports/${secondReport.id}/assign`)
+      .send({ technicianUserId: inactiveTechnician.body.id })
+      .expect(409);
+  });
+
+  it('rolls back assignment when changing the report status fails', async () => {
+    const unit = await ctx.createUnit('A-ASSIGN-08');
+    const report = await ctx.addReport(unit.id, 'VERIFIED');
+    await ctx.db.execute(
+      sql.raw(`
+      CREATE FUNCTION fail_report_assignment_for_test() RETURNS trigger
+      LANGUAGE plpgsql AS $$
+      BEGIN
+        IF NEW.status = 'ASSIGNED' THEN
+          RAISE EXCEPTION 'simulated assignment status failure';
+        END IF;
+        RETURN NEW;
+      END;
+      $$
+    `),
+    );
+    await ctx.db.execute(
+      sql.raw(`
+      CREATE TRIGGER fail_report_assignment_for_test
+      BEFORE UPDATE ON damage_reports
+      FOR EACH ROW EXECUTE FUNCTION fail_report_assignment_for_test()
+    `),
+    );
+    try {
+      await ctx
+        .api('post', `/api/reports/${report.id}/assign`)
+        .send({ technicianUserId: ctx.ids.actorIds.TECHNICIAN })
+        .expect(500);
+    } finally {
+      await ctx.db.execute(
+        sql.raw(
+          'DROP TRIGGER fail_report_assignment_for_test ON damage_reports',
+        ),
+      );
+      await ctx.db.execute(
+        sql.raw('DROP FUNCTION fail_report_assignment_for_test()'),
+      );
+    }
+
+    const [after] = await ctx.db
+      .select()
+      .from(damageReports)
+      .where(eq(damageReports.id, report.id));
+    expect(after.status).toBe('VERIFIED');
+    expect(
+      await ctx.db
+        .select()
+        .from(assignments)
+        .where(eq(assignments.reportId, report.id)),
+    ).toHaveLength(0);
+  });
+
+  it('serializes concurrent assignment requests so only one assignment is stored', async () => {
+    const unit = await ctx.createUnit('A-ASSIGN-09');
+    const report = await ctx.addReport(unit.id, 'VERIFIED');
+    await ctx.db
+      .update(users)
+      .set({ role: 'TECHNICIAN', isActive: true })
+      .where(eq(users.id, ctx.ids.secondResidentId));
+
+    const responses = await Promise.all([
+      ctx
+        .api('post', `/api/reports/${report.id}/assign`)
+        .send({ technicianUserId: ctx.ids.actorIds.TECHNICIAN }),
+      ctx
+        .api('post', `/api/reports/${report.id}/assign`)
+        .send({ technicianUserId: ctx.ids.secondResidentId }),
+    ]);
+    expect(
+      responses
+        .map((response) => response.status)
+        .sort((left, right) => left - right),
+    ).toEqual([200, 409]);
+    const [after] = await ctx.db
+      .select()
+      .from(damageReports)
+      .where(eq(damageReports.id, report.id));
+    expect(after.status).toBe('ASSIGNED');
+    expect(
+      await ctx.db
+        .select()
+        .from(assignments)
+        .where(eq(assignments.reportId, report.id)),
+    ).toHaveLength(1);
   });
 });

@@ -30,6 +30,13 @@ export const reportRejectSchema = z
   })
   .strict();
 
+export const reportAssignSchema = z
+  .object({
+    technicianUserId: z.uuid().toLowerCase(),
+    note: z.string().trim().min(1).optional(),
+  })
+  .strict();
+
 const positiveQueryInteger = z
   .string()
   .regex(/^[0-9]+$/)
@@ -54,4 +61,5 @@ export type ReportIdInput = z.infer<typeof reportIdSchema>;
 export type ReportCreateInput = z.infer<typeof reportCreateSchema>;
 export type ReportVerifyInput = z.infer<typeof reportVerifySchema>;
 export type ReportRejectInput = z.infer<typeof reportRejectSchema>;
+export type ReportAssignInput = z.infer<typeof reportAssignSchema>;
 export type ReportListInput = z.infer<typeof reportListSchema>;
