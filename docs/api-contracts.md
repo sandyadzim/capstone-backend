@@ -81,7 +81,7 @@ Status HTTP dan `code` dapat dipakai untuk alur aplikasi. `message` ditujukan un
 | `PUT`    | `/api/reports/:id/receipt`       | TECHNICIAN pemilik assignment, laporan `IN_PROGRESS`      | `200`, nota dipasang atau diganti                 |
 | `PUT`    | `/api/property/logo`             | ADMIN                                                     | `200`, profil dengan URL logo                     |
 
-Detail profil ada di [panduan property](features/property.md); payload unit, status hunian, penempatan, dan arsip ada di [panduan unit](features/units.md); akun dan peran ada di [panduan akun](features/accounts.md). Mutasi memakai body strict; PATCH akun/unit minimal satu field. Profil hanya menerima `logoUrl: null` untuk penghapusan; unggah/ganti logo ditambahkan BE-11.
+Detail profil dan unggah/ganti logo ada di [panduan property](features/property.md); payload unit, status hunian, penempatan, dan arsip ada di [panduan unit](features/units.md); akun dan peran ada di [panduan akun](features/accounts.md). Mutasi memakai body strict; PATCH akun/unit minimal satu field. Profil hanya menerima `logoUrl: null` untuk menghapus referensi logo melalui JSON; unggah/ganti logo memakai `PUT /api/property/logo` dengan multipart field `file`.
 
 Detail payload auth dan contoh pemakaian browser ada di [panduan autentikasi](features/authentication.md). Login gagal memakai `401 UNAUTHORIZED` dengan pesan generik, baik identifier tidak dikenal maupun password salah. Input login invalid memakai `400 VALIDATION_ERROR`.
 

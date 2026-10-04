@@ -39,7 +39,7 @@ Contoh body `PATCH /api/property`:
 
 PATCH bersifat parsial dan wajib memuat minimal satu field. Nama dan alamat di-trim dan tidak boleh kosong; nama maksimal 160 karakter. Field tambahan ditolak. Untuk menghapus logo, kirim `{ "logoUrl": null }`.
 
-String URL dari klien ditolak dengan `400 VALIDATION_ERROR`. Upload dan penggantian logo melalui UploadThing disediakan pada BE-11. Jika upload gagal, logo lama tetap digunakan.
+String URL dari klien ditolak dengan `400 VALIDATION_ERROR`. Gunakan endpoint multipart di bawah untuk mengunggah atau mengganti logo. Jika upload gagal, logo lama tetap digunakan.
 
 ## Properti Phase 1
 
@@ -67,4 +67,4 @@ await fetch('http://localhost:3001/api/property', {
 
 ## Integrasi upload logo
 
-Admin dapat mengunggah atau mengganti logo melalui `PUT /api/property/logo` dengan `multipart/form-data` berisi satu field `file`. Backend memvalidasi isi gambar, mengunggahnya ke UploadThing, lalu memperbarui `logoUrl` sebelum mengembalikan profil. URL logo dari payload JSON tetap ditolak; gunakan `logoUrl: null` pada `PATCH /api/property` untuk menghapus referensi logo.
+Admin dapat mengunggah atau mengganti logo melalui `PUT /api/property/logo` dengan `multipart/form-data` berisi satu field `file`. Backend menerima JPEG, PNG, atau WebP hingga 5 MiB, memvalidasi isi gambar, mengunggahnya ke UploadThing, lalu memperbarui `logoUrl` sebelum mengembalikan profil. Gunakan `FormData` dan jangan menetapkan header `Content-Type` sendiri agar browser menyertakan multipart boundary. URL logo dari payload JSON tetap ditolak; gunakan `logoUrl: null` pada `PATCH /api/property` untuk menghapus referensi logo. Upload memakai token backend `UPLOADTHING_TOKEN`; frontend tidak memakai UploadThing React SDK dan tidak pernah menerima token tersebut.

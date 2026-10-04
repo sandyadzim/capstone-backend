@@ -96,7 +96,7 @@ Query tambahan, angka pecahan, nol, nilai berulang/array, dan boolean selain ked
 }
 ```
 
-`data` berisi objek unit seperti contoh di atas. `total` adalah jumlah unit yang cocok dengan filter. Halaman melewati hasil mengembalikan `data: []` dengan metadata total tetap benar. Data dan total dibaca dari snapshot transaksi yang sama. Pagination/filter laporan akan ditetapkan pada BE-14.
+`data` berisi objek unit seperti contoh di atas. `total` adalah jumlah unit yang cocok dengan filter. Halaman melewati hasil mengembalikan `data: []` dengan metadata total tetap benar. Data dan total dibaca dari snapshot transaksi yang sama. Pagination, pencarian, dan filter laporan dijelaskan di [panduan laporan](reports.md) dan telah tersedia pada `GET /api/reports`.
 
 ## Penempatan dan pelepasan penghuni
 

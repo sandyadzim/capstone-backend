@@ -38,7 +38,7 @@ The response contains the account identity and role. The session token is sent o
 
 ## Property and units
 
-Frontend integration for the property profile is documented in [docs/features/property.md](docs/features/property.md); unit management, pagination, resident placement, and archiving are in [docs/features/units.md](docs/features/units.md). Profile reads are available to every authenticated role; all unit routes and profile changes require Admin. Uploading/replacing the property logo will be added in BE-11.
+Frontend integration for the property profile, including logo upload, is documented in [docs/features/property.md](docs/features/property.md); unit management, pagination, resident placement, and archiving are in [docs/features/units.md](docs/features/units.md). Profile reads are available to every authenticated role; all unit routes and profile changes require Admin.
 
 Account administration, password changes, active Technician filtering, and account-to-unit placement are documented in [docs/features/accounts.md](docs/features/accounts.md). All account routes require Admin; passwords are stored as Argon2id hashes and never included in responses.
 
