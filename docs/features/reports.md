@@ -94,6 +94,8 @@ Sukses mengembalikan `200` dengan status `ASSIGNED` dan detail assignment (`tech
 
 Laporan yang hilang/di luar properti dan akun Teknisi yang tidak ditemukan menghasilkan `404 NOT_FOUND`. Akun nonaktif atau bukan Teknisi, laporan yang belum `VERIFIED`, dan laporan yang sudah memiliki assignment menghasilkan `409 CONFLICT`. Request assignment berulang juga menghasilkan konflik; ambil ulang detail laporan untuk melihat keadaan terbaru.
 
+Teknisi memulai laporan berstatus `ASSIGNED` melalui `POST /api/reports/:id/start` dengan estimasi timestamp ISO 8601 yang menyertakan zona waktu. Aksi ini menyimpan estimasi dan mengubah status menjadi `IN_PROGRESS` secara atomik. Lihat [panduan tugas Teknisi](technician-work.md) untuk format body, otorisasi, dan contoh frontend.
+
 ## Contoh frontend
 
 ```ts

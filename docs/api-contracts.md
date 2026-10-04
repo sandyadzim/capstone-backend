@@ -68,12 +68,15 @@ Status HTTP dan `code` dapat dipakai untuk alur aplikasi. `message` ditujukan un
 | `POST`   | `/api/reports/:id/verify`      | ADMIN                                                     | `200`, laporan terverifikasi                      |
 | `POST`   | `/api/reports/:id/reject`      | ADMIN                                                     | `200`, laporan ditolak                            |
 | `POST`   | `/api/reports/:id/assign`      | ADMIN                                                     | `200`, Teknisi ditugaskan                         |
+| `POST`   | `/api/reports/:id/start`       | TECHNICIAN; harus pemilik assignment                      | `200`, estimasi disimpan dan status `IN_PROGRESS` |
 
 Detail profil ada di [panduan property](features/property.md); payload unit, status hunian, penempatan, dan arsip ada di [panduan unit](features/units.md); akun dan peran ada di [panduan akun](features/accounts.md). Mutasi memakai body strict; PATCH akun/unit minimal satu field. Profil hanya menerima `logoUrl: null` untuk penghapusan; unggah/ganti logo ditambahkan BE-11.
 
 Detail payload auth dan contoh pemakaian browser ada di [panduan autentikasi](features/authentication.md). Login gagal memakai `401 UNAUTHORIZED` dengan pesan generik, baik identifier tidak dikenal maupun password salah. Input login invalid memakai `400 VALIDATION_ERROR`.
 
 Create, review, detail, pagination laporan, pembatasan akses per role, dan bentuk respons tersedia di [panduan laporan](features/reports.md). Nomor laporan dialokasikan backend dari sequence PostgreSQL.
+
+Daftar tugas dan aksi mulai kerja Teknisi tersedia di [panduan tugas Teknisi](features/technician-work.md). Estimasi wajib memakai timestamp ISO 8601 dengan zona waktu.
 
 ## Enum domain
 

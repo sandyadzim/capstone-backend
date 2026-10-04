@@ -7,6 +7,7 @@ import { ApiErrorException } from '../../common/http/api-error.js';
 import type { AuthenticatedActor } from '../auth-accounts/authentication.types.js';
 import { DatabaseService } from '../database/database.service.js';
 import { ReportsRepository } from './reports.repository.js';
+import type { DatabaseTransaction } from '../database/database.service.js';
 import type {
   ReportCreateInput,
   ReportAssignInput,
@@ -104,7 +105,21 @@ export class ReportsService {
     return result.report;
   }
 
-  async get(actor: AuthenticatedActor, id: string) {
+  async get(
+    actor: AuthenticatedActor,
+    id: string,
+    transaction?: DatabaseTransaction,
+  ) {
+    if (transaction) {
+      const report = await this.repository.findAccessible(
+        id,
+        actor,
+        transaction,
+      );
+      if (!report) throw new NotFoundException();
+      return report;
+    }
+
     return this.database.db.transaction(
       async (transaction) => {
         const report = await this.repository.findAccessible(

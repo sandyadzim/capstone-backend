@@ -263,6 +263,7 @@ describe('Authentication and sessions (e2e)', () => {
       '/api/reports/{id}',
       '/api/reports/{id}/assign',
       '/api/reports/{id}/reject',
+      '/api/reports/{id}/start',
       '/api/reports/{id}/verify',
       '/api/units',
       '/api/units/{id}',

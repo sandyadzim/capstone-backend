@@ -44,6 +44,8 @@ Account administration, password changes, active Technician filtering, and accou
 
 Report creation, role-scoped listing/detail, pagination, and the optional photo upload handoff are documented in [docs/features/reports.md](docs/features/reports.md). Every report route requires a session; create is available to Admin and Resident, while list/detail results are scoped to the actor.
 
+Technician task access and the atomic start-work action with an estimated arrival timestamp are documented in [docs/features/technician-work.md](docs/features/technician-work.md). Technicians see only their assigned reports; starting work changes `ASSIGNED` to `IN_PROGRESS`.
+
 ## Environment
 
 | Variable                      | Default                                    | Description                                                                     |
