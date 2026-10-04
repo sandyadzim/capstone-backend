@@ -46,6 +46,8 @@ Report creation, role-scoped listing/detail, pagination, costs, maintenance resu
 
 Technician task access, the atomic start-work action, result/cost recording, and completion submission are documented in [docs/features/technician-work.md](docs/features/technician-work.md). Technicians see only their assigned reports; starting work changes `ASSIGNED` to `IN_PROGRESS`, and valid completion changes it to `COMPLETED`.
 
+Admin report closure, unit maintenance history, and dashboard metrics are documented in [docs/features/dashboard-history.md](docs/features/dashboard-history.md). Residents can read history only for their currently assigned, non-archived unit; Admin dashboard metrics use the Jakarta calendar month for closed reports.
+
 ## Environment
 
 | Variable                      | Default                                    | Description                                                                      |

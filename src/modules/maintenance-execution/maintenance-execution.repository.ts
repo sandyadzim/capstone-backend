@@ -15,6 +15,64 @@ import { INITIAL_PROPERTY_ID } from '../property/property.constants.js';
 
 @Injectable()
 export class MaintenanceExecutionRepository {
+  async close(
+    transaction: DatabaseTransaction,
+    actor: AuthenticatedActor,
+    reportId: string,
+  ) {
+    const [lockedActor] = await transaction
+      .select({ id: users.id, role: users.role, isActive: users.isActive })
+      .from(users)
+      .where(eq(users.id, actor.id))
+      .for('update');
+    if (!lockedActor?.isActive || lockedActor.role !== 'ADMIN') {
+      return { kind: 'actor-changed' as const };
+    }
+
+    const [report] = await transaction
+      .select({ id: damageReports.id, status: damageReports.status })
+      .from(damageReports)
+      .innerJoin(units, eq(units.id, damageReports.unitId))
+      .where(
+        and(
+          eq(damageReports.id, reportId),
+          eq(units.propertyId, INITIAL_PROPERTY_ID),
+        ),
+      )
+      .for('update', { of: damageReports });
+    if (!report) return { kind: 'report-not-found' as const };
+    if (report.status !== 'COMPLETED') {
+      return { kind: 'status-conflict' as const, status: report.status };
+    }
+
+    const [result] = await transaction
+      .select({ id: maintenanceResults.id })
+      .from(maintenanceResults)
+      .where(eq(maintenanceResults.reportId, reportId));
+    if (!result) return { kind: 'result-missing' as const };
+
+    const [receipt] = await transaction
+      .select({ id: attachments.id })
+      .from(attachments)
+      .where(
+        and(
+          eq(attachments.reportId, reportId),
+          eq(attachments.purpose, 'RECEIPT'),
+        ),
+      );
+    if (!receipt) return { kind: 'receipt-missing' as const };
+
+    await transaction
+      .update(damageReports)
+      .set({
+        status: 'CLOSED',
+        closedByUserId: actor.id,
+        closedAt: new Date(),
+      })
+      .where(eq(damageReports.id, report.id));
+    return { kind: 'closed' as const };
+  }
+
   private async lockAssignedWork(
     transaction: DatabaseTransaction,
     actor: AuthenticatedActor,
@@ -94,9 +152,9 @@ export class MaintenanceExecutionRepository {
     if (access.kind !== 'allowed') return access;
     await transaction.delete(costItems).where(eq(costItems.reportId, reportId));
     if (items.length) {
-      await transaction.insert(costItems).values(
-        items.map((item) => ({ reportId, ...item })),
-      );
+      await transaction
+        .insert(costItems)
+        .values(items.map((item) => ({ reportId, ...item })));
     }
     return { kind: 'saved' as const };
   }

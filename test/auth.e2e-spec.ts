@@ -257,12 +257,14 @@ describe('Authentication and sessions (e2e)', () => {
       '/api/auth/login',
       '/api/auth/logout',
       '/api/auth/me',
+      '/api/dashboard/summary',
       '/api/health',
       '/api/property',
       '/api/property/logo',
       '/api/reports',
       '/api/reports/{id}',
       '/api/reports/{id}/assign',
+      '/api/reports/{id}/close',
       '/api/reports/{id}/complete',
       '/api/reports/{id}/cost-items',
       '/api/reports/{id}/damage-photos',
@@ -275,6 +277,7 @@ describe('Authentication and sessions (e2e)', () => {
       '/api/units',
       '/api/units/{id}',
       '/api/units/{id}/archive',
+      '/api/units/{id}/history',
       '/api/units/{id}/resident',
     ]);
 

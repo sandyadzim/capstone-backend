@@ -140,7 +140,10 @@ export class MaintenanceExecutionController {
   @HttpCode(200)
   @Roles('TECHNICIAN')
   @ApiOperation({ summary: 'Submit completed assigned maintenance work' })
-  @ApiBody({ required: false, schema: { type: 'object', additionalProperties: false } })
+  @ApiBody({
+    required: false,
+    schema: { type: 'object', additionalProperties: false },
+  })
   @ApiOkResponse({ type: ReportDetailResponseDto })
   @ApiConflictResponse({ type: ApiErrorResponseDto })
   complete(
@@ -149,5 +152,25 @@ export class MaintenanceExecutionController {
     @Body({ schema: completeWorkSchema }) _input: Record<string, never>,
   ) {
     return this.maintenance.complete(actor, params.id);
+  }
+
+  @Post(':id/close')
+  @HttpCode(200)
+  @Roles('ADMIN')
+  @ApiOperation({
+    summary: 'Approve and close completed maintenance work (Admin)',
+  })
+  @ApiBody({
+    required: false,
+    schema: { type: 'object', additionalProperties: false },
+  })
+  @ApiOkResponse({ type: ReportDetailResponseDto })
+  @ApiConflictResponse({ type: ApiErrorResponseDto })
+  close(
+    @CurrentUser() actor: AuthenticatedActor,
+    @Param({ schema: reportIdSchema }) params: ReportIdInput,
+    @Body({ schema: completeWorkSchema }) _input: Record<string, never>,
+  ) {
+    return this.maintenance.close(actor, params.id);
   }
 }

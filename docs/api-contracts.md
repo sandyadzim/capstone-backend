@@ -69,9 +69,13 @@ Status HTTP dan `code` dapat dipakai untuk alur aplikasi. `message` ditujukan un
 | `POST`   | `/api/reports/:id/reject`        | ADMIN                                                     | `200`, laporan ditolak                            |
 | `POST`   | `/api/reports/:id/assign`        | ADMIN                                                     | `200`, Teknisi ditugaskan                         |
 | `POST`   | `/api/reports/:id/start`         | TECHNICIAN; harus pemilik assignment                      | `200`, estimasi disimpan dan status `IN_PROGRESS` |
-| `PUT`    | `/api/reports/:id/result`        | TECHNICIAN; pemilik assignment, status `IN_PROGRESS`      | `200`, hasil tersimpan/diperbarui                |
+| `PUT`    | `/api/reports/:id/result`        | TECHNICIAN; pemilik assignment, status `IN_PROGRESS`      | `200`, hasil tersimpan/diperbarui                 |
 | `PUT`    | `/api/reports/:id/cost-items`    | TECHNICIAN; pemilik assignment, status `IN_PROGRESS`      | `200`, seluruh baris biaya diganti                |
 | `POST`   | `/api/reports/:id/complete`      | TECHNICIAN; pemilik assignment, status `IN_PROGRESS`      | `200`, status menjadi `COMPLETED`                 |
+| `POST`   | `/api/reports/:id/close`         | ADMIN; status `COMPLETED`, hasil dan nota tersedia        | `200`, status menjadi `CLOSED`                    |
+| `GET`    | `/api/units/:id/history`         | ADMIN; properti Phase 1, termasuk arsip                   | `200`, `{ data, meta }` laporan `CLOSED`          |
+| `GET`    | `/api/units/:id/history`         | RESIDENT; unit aktif yang terhubung ke akunnya            | `200`, `{ data, meta }` tanpa identitas pelapor   |
+| `GET`    | `/api/dashboard/summary`         | ADMIN                                                     | `200`, enam metrik dashboard                      |
 | `POST`   | `/api/reports/:id/damage-photos` | ADMIN atau RESIDENT sesuai akses laporan                  | `201`, URL dan relasi foto kerusakan tersimpan    |
 | `POST`   | `/api/reports/:id/repair-photos` | TECHNICIAN pemilik assignment, laporan `IN_PROGRESS`      | `201`, URL dan relasi foto hasil tersimpan        |
 | `PUT`    | `/api/reports/:id/receipt`       | TECHNICIAN pemilik assignment, laporan `IN_PROGRESS`      | `200`, nota dipasang atau diganti                 |
@@ -85,6 +89,8 @@ Create, review, detail, pagination laporan, pembatasan akses per role, dan bentu
 
 Daftar tugas, pencatatan hasil/biaya, dan pengiriman completion Teknisi tersedia di [panduan tugas Teknisi](features/technician-work.md). Upload file memakai multipart field `file`, sesi yang sama dengan REST API, dan mengembalikan URL publik setelah URL tersimpan. Nilai `UPLOADTHING_TOKEN` hanya disetel di environment backend.
 
+Penutupan pekerjaan oleh Admin, akses riwayat per unit, bentuk DTO yang disamarkan, dan definisi metrik dashboard tersedia di [panduan riwayat dan dashboard](features/dashboard-history.md).
+
 ## Enum domain
 
 Nilai enum berikut menggunakan bentuk wire uppercase dan ditetapkan sebagai konstanta runtime di schema backend:
@@ -95,7 +101,7 @@ Nilai enum berikut menggunakan bentuk wire uppercase dan ditetapkan sebagai kons
 | Status laporan     | `REPORTED`, `VERIFIED`, `REJECTED`, `ASSIGNED`, `IN_PROGRESS`, `COMPLETED`, `CLOSED` |
 | Kategori kerusakan | `AC`, `ELECTRICAL`, `PLUMBING`, `FURNITURE`, `BUILDING`, `OTHER`                     |
 | Prioritas          | `LOW`, `MEDIUM`, `HIGH`                                                              |
-| Jenis biaya        | `SERVICE`, `MATERIAL`                                                                 |
+| Jenis biaya        | `SERVICE`, `MATERIAL`                                                                |
 
 Status tampilan unit dihitung dari maintenance flag dan relasi RESIDENT aktif: `MAINTENANCE`, `OCCUPIED`, atau `VACANT`, dengan maintenance sebagai prioritas. Arsip ditampilkan terpisah melalui `isArchived`.
 

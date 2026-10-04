@@ -117,6 +117,8 @@ Laporan yang hilang/di luar properti dan akun Teknisi yang tidak ditemukan mengh
 
 Teknisi memulai laporan berstatus `ASSIGNED` melalui `POST /api/reports/:id/start` dengan estimasi timestamp ISO 8601 yang menyertakan zona waktu. Aksi ini menyimpan estimasi dan mengubah status menjadi `IN_PROGRESS` secara atomik. Lihat [panduan tugas Teknisi](technician-work.md) untuk format body, otorisasi, dan contoh frontend.
 
+Setelah Teknisi menyelesaikan pekerjaan, Admin menutup laporan melalui `POST /api/reports/:id/close`. Riwayat laporan `CLOSED` dan metrik dashboard Admin dijelaskan di [panduan riwayat dan dashboard](dashboard-history.md).
+
 ## Contoh frontend
 
 ```ts

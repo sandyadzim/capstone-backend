@@ -6,6 +6,7 @@ import {
 import { ApiErrorException } from '../../common/http/api-error.js';
 import type { AuthenticatedActor } from '../auth-accounts/authentication.types.js';
 import { DatabaseService } from '../database/database.service.js';
+import type { DatabaseTransaction } from '../database/database.service.js';
 import { ReportsService } from '../reports-assignment/reports.service.js';
 import type {
   CostItemsInput,
@@ -82,10 +83,31 @@ export class MaintenanceExecutionService {
     );
   }
 
+  async close(actor: AuthenticatedActor, reportId: string) {
+    if (actor.role !== 'ADMIN') throw new ForbiddenException();
+    return this.database.transaction(async (transaction) => {
+      const result = await this.repository.close(transaction, actor, reportId);
+      if (result.kind === 'actor-changed') throw new ForbiddenException();
+      if (result.kind === 'report-not-found') throw new NotFoundException();
+      if (result.kind === 'status-conflict') {
+        conflict(
+          `Report status is ${result.status}; only COMPLETED reports can be closed`,
+        );
+      }
+      if (result.kind === 'result-missing') {
+        conflict('Maintenance result is required before closing');
+      }
+      if (result.kind === 'receipt-missing') {
+        conflict('A receipt attachment is required before closing');
+      }
+      return this.reports.get(actor, reportId, transaction);
+    });
+  }
+
   private async mutate<T extends { kind: string }>(
     actor: AuthenticatedActor,
     reportId: string,
-    operation: (transaction: import('../database/database.service.js').DatabaseTransaction) => Promise<T>,
+    operation: (transaction: DatabaseTransaction) => Promise<T>,
   ) {
     return this.database.transaction(async (transaction) => {
       const result = await operation(transaction);

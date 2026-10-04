@@ -101,6 +101,8 @@ POST /api/reports/{id}/complete
 
 Request body boleh kosong atau `{}`. Sukses mengembalikan `200` dan detail laporan terbaru berstatus `COMPLETED`. Hasil, biaya, attachment nota, dan status diperiksa/diperbarui secara konsisten di database. Jika hasil atau nota belum tersedia, atau status sudah berubah, API mengembalikan `409 CONFLICT`; laporan tetap `IN_PROGRESS` dan teknisi dapat melengkapi data lalu mencoba kembali. Submit ulang setelah `COMPLETED` juga menghasilkan `409`.
 
+Setelah memeriksa pekerjaan, Admin menutup laporan `COMPLETED` melalui `POST /api/reports/{id}/close`. Status `CLOSED` menjadi akhir alur Phase 1 dan laporan muncul pada riwayat unit. Lihat [panduan riwayat dan dashboard](dashboard-history.md).
+
 Semua perubahan hanya diizinkan untuk Teknisi pemilik assignment dan laporan `IN_PROGRESS`. Role lain menerima `403`, laporan/assignment di luar cakupan menerima `404`, serta body invalid menerima `400 VALIDATION_ERROR`. Detail laporan menampilkan hasil dan total biaya bagi Resident yang berhak mengaksesnya; rincian biaya hanya terlihat oleh Admin dan Teknisi. Nota disembunyikan dari Resident.
 
 Contoh request browser menggunakan cookie sesi:
