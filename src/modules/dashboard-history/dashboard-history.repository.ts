@@ -170,7 +170,7 @@ export class DashboardHistoryRepository {
             totalReports: count(),
             activeReports: sql<number>`count(*) filter (where ${damageReports.status} not in ('CLOSED', 'REJECTED'))::int`,
             inProgressReports: sql<number>`count(*) filter (where ${damageReports.status} = 'IN_PROGRESS')::int`,
-            closedReportsThisMonth: sql<number>`count(*) filter (where ${damageReports.status} = 'CLOSED' and ${damageReports.closedAt} >= ${start} and ${damageReports.closedAt} < ${end})::int`,
+            closedReportsThisMonth: sql<number>`count(*) filter (where ${damageReports.status} = 'CLOSED' and ${damageReports.closedAt} >= ${start.toISOString()}::timestamptz and ${damageReports.closedAt} < ${end.toISOString()}::timestamptz)::int`,
           })
           .from(damageReports)
           .innerJoin(units, eq(units.id, damageReports.unitId))
