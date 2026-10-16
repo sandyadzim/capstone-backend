@@ -19,6 +19,7 @@ export class ResidentPlacementService {
     unitId: string,
     residentUserId: string,
     transaction?: DatabaseTransaction,
+    unassignedOnly = false,
   ): Promise<UnitResponseDto> {
     const work = async (tx: DatabaseTransaction) => {
       const resident = await this.repository.lockResident(residentUserId, tx);
@@ -34,6 +35,11 @@ export class ResidentPlacementService {
         residentUserId,
         tx,
       );
+      if (unassignedOnly && previous && previous.id !== unitId) {
+        unitsConflict(
+          'This resident already has a unit. Refresh the available residents.',
+        );
+      }
       if (previous && previous.propertyId !== INITIAL_PROPERTY_ID) {
         unitsConflict('Resident is assigned outside the configured property');
       }
