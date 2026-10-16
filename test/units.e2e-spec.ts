@@ -93,8 +93,8 @@ describe('Units API (e2e)', () => {
       .expect(409);
   });
   it('paginates deterministically, excludes archives by default, and scopes all operations', async () => {
-    await ctx.createUnit('B');
-    await ctx.createUnit('A');
+    await ctx.createUnit('B', { createdAt: new Date('2026-01-01T00:00:00Z') });
+    await ctx.createUnit('A', { createdAt: new Date('2026-01-02T00:00:00Z') });
     await ctx.createUnit('Z', { isArchived: true });
     await ctx.db
       .insert(properties)
@@ -143,6 +143,186 @@ describe('Units API (e2e)', () => {
       .send({ residentUserId: ctx.ids.actorIds.RESIDENT })
       .expect(404);
     await ctx.api('delete', `/api/units/${foreign.id}/resident`).expect(404);
+  });
+  it('orders newest creations first with an ID tie-breaker across pages and updates', async () => {
+    const older = await ctx.createUnit('A-OLD', {
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+    });
+    const timestamp = new Date('2026-01-02T00:00:00Z');
+    const lowerId = await ctx.createUnit('Z-NEW', {
+      id: '44000000-0000-4000-8000-000000000001',
+      createdAt: timestamp,
+    });
+    const higherId = await ctx.createUnit('B-NEW', {
+      id: '44000000-0000-4000-8000-000000000002',
+      createdAt: timestamp,
+    });
+    // Editing an older unit must not promote it as a new creation.
+    await ctx
+      .api('patch', `/api/units/${older.id}`)
+      .send({ floor: 2 })
+      .expect(200);
+    for (const [index, expected] of [higherId, lowerId, older].entries()) {
+      const response = await ctx
+        .api('get', `/api/units?page=${index + 1}&pageSize=1`)
+        .expect(200);
+      expect(response.body.data.map((unit: { id: string }) => unit.id)).toEqual(
+        [expected.id],
+      );
+      expect(response.body.meta).toMatchObject({
+        page: index + 1,
+        total: 3,
+        totalPages: 3,
+      });
+    }
+  });
+  it('searches literal unit numbers with matching totals, pagination and property/archive scope', async () => {
+    await ctx.createUnit('Ab-101', {
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+    });
+    await ctx.createUnit('AB-102', {
+      createdAt: new Date('2026-01-02T00:00:00Z'),
+    });
+    await ctx.createUnit('AB-103', { isArchived: true });
+    await ctx.createUnit('Other');
+    await ctx.db
+      .insert(properties)
+      .values({ id: ctx.ids.otherPropertyId, name: 'Other', address: 'Other' });
+    await ctx.createUnit('AB-104', { propertyId: ctx.ids.otherPropertyId });
+    const result = await ctx
+      .api('get', '/api/units?q=%20ab-10%20&pageSize=1&page=2')
+      .expect(200);
+    expect(result.body.meta).toEqual({
+      page: 2,
+      pageSize: 1,
+      total: 2,
+      totalPages: 2,
+    });
+    expect(
+      result.body.data.map((unit: { unitNumber: string }) => unit.unitNumber),
+    ).toEqual(['Ab-101']);
+    const archived = await ctx
+      .api('get', '/api/units?q=ab-10&isArchived=true')
+      .expect(200);
+    expect(
+      archived.body.data.map((unit: { unitNumber: string }) => unit.unitNumber),
+    ).toEqual(['AB-103']);
+    const empty = await ctx.api('get', '/api/units?q=missing').expect(200);
+    expect(empty.body.meta.total).toBe(0);
+    expect(empty.body.data).toEqual([]);
+    const blank = await ctx.api('get', '/api/units?q=%20%20').expect(200);
+    expect(blank.body.meta.total).toBe(3);
+    for (const query of ['q=' + 'a'.repeat(41), 'q=A&q=B'])
+      await ctx.api('get', '/api/units?' + query).expect(400);
+  });
+  it('filters computed display status before pagination with search and archive/property scope', async () => {
+    await ctx.createUnit('A-01');
+    await ctx.createUnit('A-02', {
+      activeResidentUserId: ctx.ids.actorIds.RESIDENT,
+    });
+    await ctx.createUnit('A-03', {
+      maintenanceFlag: true,
+      createdAt: new Date('2026-01-02T00:00:00Z'),
+      activeResidentUserId: ctx.ids.secondResidentId,
+    });
+    await ctx.createUnit('A-04', {
+      maintenanceFlag: true,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+    });
+    await ctx.createUnit('A-05', { maintenanceFlag: true, isArchived: true });
+    await ctx.db.insert(properties).values({
+      id: ctx.ids.otherPropertyId,
+      name: 'Other',
+      address: 'Other',
+    });
+    await ctx.createUnit('A-06', {
+      maintenanceFlag: true,
+      propertyId: ctx.ids.otherPropertyId,
+    });
+    const vacant = await ctx
+      .api('get', '/api/units?displayStatus=VACANT')
+      .expect(200);
+    expect(
+      vacant.body.data.map((unit: { unitNumber: string }) => unit.unitNumber),
+    ).toEqual(['A-01']);
+    const occupied = await ctx
+      .api('get', '/api/units?displayStatus=OCCUPIED&q=a-')
+      .expect(200);
+    expect(occupied.body.meta.total).toBe(1);
+    expect(occupied.body.data[0]).toMatchObject({
+      unitNumber: 'A-02',
+      displayStatus: 'OCCUPIED',
+    });
+    const maintenance = await ctx
+      .api('get', '/api/units?displayStatus=MAINTENANCE&q=a-&pageSize=1&page=2')
+      .expect(200);
+    expect(maintenance.body.meta).toEqual({
+      page: 2,
+      pageSize: 1,
+      total: 2,
+      totalPages: 2,
+    });
+    expect(maintenance.body.data[0]).toMatchObject({
+      unitNumber: 'A-04',
+      displayStatus: 'MAINTENANCE',
+    });
+    const archived = await ctx
+      .api('get', '/api/units?displayStatus=MAINTENANCE&isArchived=true')
+      .expect(200);
+    expect(archived.body.meta.total).toBe(1);
+    expect(archived.body.data[0].unitNumber).toBe('A-05');
+    const empty = await ctx
+      .api('get', '/api/units?displayStatus=OCCUPIED&page=2')
+      .expect(200);
+    expect(empty.body.meta.total).toBe(1);
+    expect(empty.body.data).toEqual([]);
+    for (const query of [
+      'displayStatus=unknown',
+      'displayStatus=',
+      'displayStatus=VACANT&displayStatus=OCCUPIED',
+    ])
+      await ctx.api('get', '/api/units?' + query).expect(400);
+  });
+  it('classifies inactive or non-resident accounts as vacant for status filtering', async () => {
+    await ctx.db
+      .update(users)
+      .set({ isActive: false })
+      .where(eq(users.id, ctx.ids.secondResidentId));
+    await ctx.createUnit('Inactive', {
+      activeResidentUserId: ctx.ids.secondResidentId,
+    });
+    await ctx.createUnit('Technician', {
+      activeResidentUserId: ctx.ids.actorIds.TECHNICIAN,
+    });
+    const vacant = await ctx
+      .api('get', '/api/units?displayStatus=VACANT')
+      .expect(200);
+    expect(vacant.body.meta.total).toBe(2);
+    for (const unit of vacant.body.data)
+      expect(unit).toMatchObject({
+        displayStatus: 'VACANT',
+        activeResident: null,
+      });
+    const occupied = await ctx
+      .api('get', '/api/units?displayStatus=OCCUPIED')
+      .expect(200);
+    expect(occupied.body.meta.total).toBe(0);
+  });
+  it('escapes SQL wildcard characters and accepts quotes as literal search text', async () => {
+    for (const number of ['A%1', 'A_1', 'A\\1', "A'1", 'AX1'])
+      await ctx.createUnit(number);
+    for (const [query, expected] of [
+      ['%', 'A%1'],
+      ['_', 'A_1'],
+      ['\\', 'A\\1'],
+      ["'", "A'1"],
+    ]) {
+      const result = await ctx
+        .api('get', '/api/units?q=' + encodeURIComponent(query))
+        .expect(200);
+      expect(result.body.meta.total).toBe(1);
+      expect(result.body.data[0].unitNumber).toBe(expected);
+    }
   });
   it('places and moves a resident atomically, supports repeated placement, and never exposes credentials', async () => {
     const first = await ctx.createUnit('A');
@@ -409,7 +589,23 @@ describe('Units API (e2e)', () => {
       document.paths['/api/units'].get.parameters
         .map((p: { name: string }) => p.name)
         .sort(),
-    ).toEqual(['isArchived', 'page', 'pageSize']);
+    ).toEqual(['displayStatus', 'isArchived', 'page', 'pageSize', 'q']);
+    expect(
+      document.paths['/api/units'].get.parameters.find(
+        (p: { name: string }) => p.name === 'q',
+      ),
+    ).toMatchObject({
+      required: false,
+      schema: { type: 'string', maxLength: 40 },
+    });
+    expect(
+      document.paths['/api/units'].get.parameters.find(
+        (p: { name: string }) => p.name === 'displayStatus',
+      ),
+    ).toMatchObject({
+      required: false,
+      schema: { type: 'string', enum: ['MAINTENANCE', 'OCCUPIED', 'VACANT'] },
+    });
     expect(
       document.components.schemas.UnitResponseDto.properties.displayStatus.enum,
     ).toEqual(['MAINTENANCE', 'OCCUPIED', 'VACANT']);

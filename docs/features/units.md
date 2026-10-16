@@ -14,7 +14,25 @@ Panduan integrasi frontend untuk daftar, perubahan, penghuni, dan arsip unit. Pr
 | PUT    | `/api/units/:id/resident` | ADMIN | 200, unit tujuan setelah penempatan |
 | DELETE | `/api/units/:id/resident` | ADMIN | 200, unit setelah pelepasan         |
 
-`:id` harus UUID. Semua operasi unit hanya tersedia bagi ADMIN. Unit dibatasi pada properti Phase 1. Detail unit arsip masih dapat dibaca; tidak tersedia penghapusan fisik atau pemulihan arsip.
+`:id` harus UUID. Semua operasi `/api/units` di atas hanya tersedia bagi ADMIN. Unit dibatasi pada properti Phase 1. Detail unit arsip masih dapat dibaca; tidak tersedia penghapusan fisik atau pemulihan arsip.
+
+## Unit Resident saat ini
+
+`GET /api/resident/unit` tersedia hanya bagi akun RESIDENT dengan sesi aktif. Endpoint ini tidak menerima body atau query selector; identitas penghuni diambil dari sesi. Respons `200` hanya memuat unit non-arsip milik penghuni tersebut pada properti Phase 1:
+
+```json
+{
+  "unit": {
+    "id": "11000000-0000-4000-8000-000000000002",
+    "unitNumber": "A-204",
+    "floor": 2
+  }
+}
+```
+
+Penghuni tanpa penempatan mendapat `200` dengan `{ "unit": null }`. Unit arsip atau penempatan di luar properti Phase 1 juga tidak ditampilkan. Properti yang belum dikonfigurasi menghasilkan `404`, bukan hasil tanpa penempatan. Sesi tidak valid menghasilkan `401`; Admin dan Technician mendapat `403`. Query tambahan menghasilkan `400`. Respons tidak berisi penghuni lain, identitas audit, maintenance flag, atau field Admin. Tidak ada perubahan pada respons `/api/auth/me` dan otorisasi endpoint Admin.
+
+Frontend memakai identitas akun dari `/api/auth/me`, profil properti dari `/api/property`, dan penempatan dari endpoint ini. Penempatan, pemindahan, dan pelepasan oleh Admin langsung tercermin pada pembacaan berikutnya tanpa login ulang. Bedakan hasil `unit: null` dari kegagalan request.
 
 ## Buat dan ubah unit
 
@@ -72,17 +90,19 @@ Unit baru memiliki `activeResident: null`, `isArchived: false`, dan `displayStat
 
 Gunakan `isArchived` secara terpisah untuk menampilkan arsip. Status hunian tidak disimpan sebagai field yang dapat diubah klien.
 
-## Daftar unit dan pagination
+## Daftar unit, pencarian, dan pagination
 
-Contoh: `GET /api/units?page=1&pageSize=20&isArchived=false`.
+Contoh: `GET /api/units?page=1&pageSize=20&isArchived=false&q=A-10&displayStatus=VACANT`.
 
-| Query        | Default | Aturan                                                                                 |
-| ------------ | ------- | -------------------------------------------------------------------------------------- |
-| `page`       | 1       | Integer positif dalam bentuk digit; offset harus dalam rentang integer aman JavaScript |
-| `pageSize`   | 20      | Integer positif, maksimal 100                                                          |
-| `isArchived` | `false` | Tepat string `true` atau `false`                                                       |
+| Query           | Default | Aturan                                                                                  |
+| --------------- | ------- | --------------------------------------------------------------------------------------- |
+| `page`          | 1       | Integer positif dalam bentuk digit; offset harus dalam rentang integer aman JavaScript  |
+| `pageSize`      | 20      | Integer positif, maksimal 100                                                           |
+| `q`             | —       | Substring nomor unit, case-insensitive, trim, maksimal 40 karakter                      |
+| `displayStatus` | —       | Tepat `VACANT`, `OCCUPIED`, atau `MAINTENANCE`; opsional, semua status jika dihilangkan |
+| `isArchived`    | `false` | Tepat string `true` atau `false`                                                        |
 
-Query tambahan, angka pecahan, nol, nilai berulang/array, dan boolean selain kedua string tersebut ditolak. Daftar default hanya memuat unit non-arsip. Untuk tab arsip, kirim `isArchived=true`; filter tersebut memilih hanya unit arsip. Hasil diurutkan menurut `unitNumber ASC`, lalu `id ASC`.
+Query tambahan, angka pecahan, nol, nilai berulang/array, dan boolean selain kedua string tersebut ditolak. Daftar default hanya memuat unit non-arsip. Untuk pilihan arsip, kirim `isArchived=true`; filter tersebut memilih hanya unit arsip. Hasil diurutkan menurut `createdAt DESC`, lalu `id DESC` (unit terbaru dahulu, dengan ID sebagai tie-breaker). Pencarian `q` hanya berlaku untuk `unitNumber`, digabungkan dengan filter arsip dan properti menggunakan AND. Query kosong atau spasi berarti tanpa pencarian. Karakter `%`, `_`, dan `\` dicari secara literal, bukan wildcard SQL; gunakan URL encoding (misalnya `%25` untuk `%`). Nilai lebih dari 40 karakter atau parameter berulang/array ditolak dengan 400. Filter `displayStatus` memakai status tampilan yang dihitung: maintenance flag menghasilkan `MAINTENANCE` terlebih dahulu; jika tidak, relasi akun RESIDENT aktif menghasilkan `OCCUPIED`; sisanya `VACANT`. Akun nonaktif atau role selain RESIDENT tidak dihitung sebagai penghuni aktif. Filter opsional ini digabungkan dengan pencarian/arsip/properti menggunakan AND sebelum pagination. Nilai kosong, enum invalid, atau parameter berulang/array ditolak dengan 400; untuk semua status, hilangkan parameter. Predicate dan active-resident join count/rows tetap sama, sehingga total dan pagination mengikuti semua filter. Tidak ada perubahan field status yang disimpan atau migrasi database.
 
 ```json
 {
@@ -181,3 +201,9 @@ bun run lint
 ```
 
 Uji HTTP memakai PGlite dan migrasi asli, sehingga pengujian tidak memerlukan koneksi database eksternal.
+
+### Resident Placement tanpa perpindahan
+
+`GET /api/accounts` menerima query opsional `unassignedOnly=true|false` (string strict). Saat true, hanya akun RESIDENT tanpa relasi unit yang dihitung/dipaginasi; gabungkan dengan `role=RESIDENT&isActive=true` untuk pemilih penempatan. Omitted/false mempertahankan daftar lama. Filter lain tetap digabung sebelum count/pagination.
+
+`PUT /api/units/:id/resident` menerima boolean opsional `unassignedOnly`. Frontend Resident Placement mengirim `{ residentUserId, unassignedOnly: true }`. Setelah akun dikunci, penempatan ke unit lain yang sudah ada menghasilkan409 tanpa memindahkan penghuni; penempatan ke unit sama tetap idempoten. Omitted/false mempertahankan dukungan pindah, termasuk komposisi internal manajemen akun. Tidak ada migrasi database.

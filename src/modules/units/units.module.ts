@@ -4,10 +4,11 @@ import { ResidentPlacementService } from './resident-placement.service.js';
 import { UnitsController } from './units.controller.js';
 import { UnitsService } from './units.service.js';
 import { UnitsRepository } from './units.repository.js';
+import { ResidentUnitController } from './resident-unit.controller.js';
 
 @Module({
   imports: [PropertyModule],
-  controllers: [UnitsController],
+  controllers: [UnitsController, ResidentUnitController],
   providers: [UnitsService, ResidentPlacementService, UnitsRepository],
   exports: [ResidentPlacementService],
 })

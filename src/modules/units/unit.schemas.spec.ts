@@ -30,8 +30,26 @@ describe('Unit contracts', () => {
     { isArchived: '' },
     { page: ['1', '2'] },
     { search: 'abc' },
+    { q: 'a'.repeat(41) },
+    { q: ['A', 'B'] },
+    { q: 1 },
+    { displayStatus: '' },
+    { displayStatus: 'occupied' },
+    { displayStatus: ['OCCUPIED', 'VACANT'] },
   ])('rejects invalid query %j', (input) => {
     expect(unitListSchema.safeParse(input).success).toBe(false);
+  });
+  it('normalizes optional unit-number search', () => {
+    expect(unitListSchema.parse({ q: ' A-01 ' }).q).toBe('A-01');
+    expect(unitListSchema.parse({ q: '   ' }).q).toBeUndefined();
+    expect(unitListSchema.parse({ q: 'a'.repeat(40) }).q).toHaveLength(40);
+  });
+  it('accepts optional computed display status', () => {
+    for (const displayStatus of ['VACANT', 'OCCUPIED', 'MAINTENANCE'])
+      expect(unitListSchema.parse({ displayStatus }).displayStatus).toBe(
+        displayStatus,
+      );
+    expect(unitListSchema.parse({}).displayStatus).toBeUndefined();
   });
   it('trims unit numbers and rejects invalid or empty patches', () => {
     expect(

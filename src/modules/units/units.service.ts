@@ -8,7 +8,11 @@ import type {
   UnitListInput,
   UnitPatchInput,
 } from './unit.schemas.js';
-import type { UnitListResponseDto, UnitResponseDto } from './unit.dto.js';
+import type {
+  ResidentUnitResponseDto,
+  UnitListResponseDto,
+  UnitResponseDto,
+} from './unit.dto.js';
 
 @Injectable()
 export class UnitsService {
@@ -17,6 +21,15 @@ export class UnitsService {
     private readonly repository: UnitsRepository,
     private readonly property: PropertyService,
   ) {}
+  async getResidentUnit(
+    residentUserId: string,
+  ): Promise<ResidentUnitResponseDto> {
+    await this.property.get();
+    return {
+      unit: await this.repository.findCurrentResidentUnit(residentUserId),
+    };
+  }
+
   async list(input: UnitListInput): Promise<UnitListResponseDto> {
     await this.property.get();
     return this.repository.listUnits(input);

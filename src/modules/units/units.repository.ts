@@ -1,5 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { and, asc, count, eq, inArray, notInArray } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  notInArray,
+  sql,
+} from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service.js';
 import type {
   Database,
@@ -36,10 +45,34 @@ const residentJoin = and(
   eq(users.isActive, true),
   eq(users.role, 'RESIDENT'),
 );
+// Use the same active-resident join and precedence as the response status.
+const displayStatus = sql<string>`CASE
+  WHEN ${units.maintenanceFlag} THEN 'MAINTENANCE'
+  WHEN ${users.id} IS NOT NULL THEN 'OCCUPIED'
+  ELSE 'VACANT'
+END`;
 
 @Injectable()
 export class UnitsRepository {
   constructor(private readonly database: DatabaseService) {}
+
+  async findCurrentResidentUnit(residentUserId: string) {
+    const [unit] = await this.database.db
+      .select({
+        id: units.id,
+        unitNumber: units.unitNumber,
+        floor: units.floor,
+      })
+      .from(units)
+      .where(
+        and(
+          eq(units.activeResidentUserId, residentUserId),
+          eq(units.propertyId, INITIAL_PROPERTY_ID),
+          eq(units.isArchived, false),
+        ),
+      );
+    return unit ?? null;
+  }
 
   async findUnit(
     id: string,
@@ -63,23 +96,33 @@ export class UnitsRepository {
   }
 
   async listUnits(input: UnitListInput) {
+    const searchPattern = input.q
+      ? `%${input.q.replace(/[\\%_]/g, '\\$&')}%`
+      : undefined;
     // Both queries see the same snapshot, including an empty page beyond the end.
     return this.database.db.transaction(
       async (transaction) => {
         const predicate = and(
           eq(units.propertyId, INITIAL_PROPERTY_ID),
           eq(units.isArchived, input.isArchived),
+          input.displayStatus
+            ? eq(displayStatus, input.displayStatus)
+            : undefined,
+          searchPattern
+            ? sql`${units.unitNumber} ILIKE ${searchPattern} ESCAPE E'\\\\'`
+            : undefined,
         );
         const [totals] = await transaction
           .select({ total: count() })
           .from(units)
+          .leftJoin(users, residentJoin)
           .where(predicate);
         const rows = await transaction
           .select(unitProjection)
           .from(units)
           .leftJoin(users, residentJoin)
           .where(predicate)
-          .orderBy(asc(units.unitNumber), asc(units.id))
+          .orderBy(desc(units.createdAt), desc(units.id))
           .limit(input.pageSize)
           .offset((input.page - 1) * input.pageSize);
         const data: UnitResponseDto[] = rows.map((unit) => ({

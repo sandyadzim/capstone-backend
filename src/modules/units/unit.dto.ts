@@ -36,3 +36,15 @@ export class UnitListResponseDto {
   @ApiProperty({ type: [UnitResponseDto] }) data!: UnitResponseDto[];
   @ApiProperty({ type: UnitPaginationMetaDto }) meta!: UnitPaginationMetaDto;
 }
+
+export class ResidentUnitDetailsDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty({ maxLength: 40 }) unitNumber!: string;
+  @ApiProperty({ type: 'integer', minimum: -32768, maximum: 32767 })
+  floor!: number;
+}
+
+export class ResidentUnitResponseDto {
+  @ApiProperty({ type: ResidentUnitDetailsDto, nullable: true })
+  unit!: ResidentUnitDetailsDto | null;
+}

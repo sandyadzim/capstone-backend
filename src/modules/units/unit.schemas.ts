@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { UNIT_DISPLAY_STATUSES } from './unit.dto.js';
 
 const nonemptyPatch = (value: object) => Object.keys(value).length > 0;
 export const unitIdSchema = z.object({ id: z.uuid().toLowerCase() }).strict();
@@ -14,7 +15,10 @@ export const unitPatchSchema = unitCreateSchema
   .partial()
   .refine(nonemptyPatch, 'Provide at least one field to update');
 export const residentPlacementSchema = z
-  .object({ residentUserId: z.uuid().toLowerCase() })
+  .object({
+    residentUserId: z.uuid().toLowerCase(),
+    unassignedOnly: z.boolean().optional(),
+  })
   .strict();
 
 const positiveQueryInteger = z
@@ -29,6 +33,8 @@ export const unitListSchema = z
       .pipe(z.number().max(100))
       .optional()
       .default(20),
+    q: z.string().trim().max(40).optional(),
+    displayStatus: z.enum(UNIT_DISPLAY_STATUSES).optional(),
     isArchived: z
       .enum(['true', 'false'])
       .transform((value) => value === 'true')
@@ -39,7 +45,8 @@ export const unitListSchema = z
   .refine((value) => Number.isSafeInteger((value.page - 1) * value.pageSize), {
     path: ['page'],
     message: 'Pagination offset exceeds the supported range',
-  });
+  })
+  .transform((value) => ({ ...value, q: value.q || undefined }));
 
 export type UnitCreateInput = z.infer<typeof unitCreateSchema>;
 export type UnitPatchInput = z.infer<typeof unitPatchSchema>;

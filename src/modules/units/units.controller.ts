@@ -28,7 +28,11 @@ import { Roles } from '../auth-accounts/roles.decorator.js';
 import { ApiErrorResponseDto } from '../../common/http/api-error.js';
 import { UnitsService } from './units.service.js';
 import { ResidentPlacementService } from './resident-placement.service.js';
-import { UnitListResponseDto, UnitResponseDto } from './unit.dto.js';
+import {
+  UnitListResponseDto,
+  UnitResponseDto,
+  UNIT_DISPLAY_STATUSES,
+} from './unit.dto.js';
 import {
   unitIdSchema,
   unitCreateSchema,
@@ -61,7 +65,8 @@ export class UnitsController {
 
   @Get()
   @ApiOperation({
-    summary: 'List property units (Admin), sorted by unitNumber then id',
+    summary:
+      'List property units (Admin), newest first (createdAt DESC, id DESC)',
   })
   @ApiOkResponse({ type: UnitListResponseDto })
   @ApiQuery({
@@ -78,6 +83,20 @@ export class UnitsController {
     name: 'isArchived',
     required: false,
     schema: { type: 'string', enum: ['true', 'false'], default: 'false' },
+  })
+  @ApiQuery({
+    name: 'q',
+    required: false,
+    description:
+      'Case-insensitive literal substring of unitNumber; trimmed, blank means no search',
+    schema: { type: 'string', maxLength: 40 },
+  })
+  @ApiQuery({
+    name: 'displayStatus',
+    required: false,
+    description:
+      'Computed unit status; maintenance takes precedence over active resident occupancy',
+    schema: { type: 'string', enum: [...UNIT_DISPLAY_STATUSES] },
   })
   list(
     @Query({ schema: unitListSchema }) input: UnitListInput,
@@ -139,7 +158,12 @@ export class UnitsController {
     @Param({ schema: unitIdSchema }) params: UnitIdInput,
     @Body({ schema: residentPlacementSchema }) input: ResidentPlacementInput,
   ): Promise<UnitResponseDto> {
-    return this.placement.place(params.id, input.residentUserId);
+    return this.placement.place(
+      params.id,
+      input.residentUserId,
+      undefined,
+      input.unassignedOnly,
+    );
   }
 
   @Delete(':id/resident')
