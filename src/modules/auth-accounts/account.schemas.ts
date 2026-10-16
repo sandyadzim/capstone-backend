@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { USER_ROLES } from '../database/schema.js';
 
-const passwordSchema = z.string().min(12).max(1024);
+const passwordSchema = z.string().min(4).max(30);
 const accountFields = {
   name: z.string().trim().min(1).max(160),
   loginIdentifier: z
@@ -57,7 +57,12 @@ export const accountListSchema = z
       .pipe(z.number().max(100))
       .optional()
       .default(20),
+    q: z.string().trim().max(254).optional(),
     role: z.enum(USER_ROLES).optional(),
+    unassignedOnly: z
+      .enum(['true', 'false'])
+      .transform((value) => value === 'true')
+      .optional(),
     isActive: z
       .enum(['true', 'false'])
       .transform((value) => value === 'true')

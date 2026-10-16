@@ -12,7 +12,7 @@ const seedEnvironmentSchema = z.object({
   SEED_PROPERTY_ADDRESS: z.string().trim().min(1),
   SEED_ADMIN_NAME: z.string().trim().min(1).max(160),
   SEED_ADMIN_LOGIN_IDENTIFIER: z.string().trim().min(1).max(254),
-  SEED_ADMIN_PASSWORD: z.string().min(12).max(1024),
+  SEED_ADMIN_PASSWORD: z.string().min(4).max(30),
 });
 
 const environment = seedEnvironmentSchema.safeParse(process.env);

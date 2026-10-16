@@ -48,8 +48,8 @@ const accountProperties = {
   loginIdentifier: { type: 'string', minLength: 1, maxLength: 254 },
   password: {
     type: 'string',
-    minLength: 12,
-    maxLength: 1024,
+    minLength: 4,
+    maxLength: 30,
     writeOnly: true,
   },
   role: { type: 'string', enum: [...USER_ROLES] },
@@ -73,7 +73,8 @@ export class AccountsController {
 
   @Get()
   @ApiOperation({
-    summary: 'List accounts; filter active Technicians with role and isActive',
+    summary:
+      'List accounts newest first with name/login search, role and active-status filters',
   })
   @ApiOkResponse({ type: AccountListResponseDto })
   @ApiQuery({
@@ -87,6 +88,13 @@ export class AccountsController {
     schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
   })
   @ApiQuery({
+    name: 'q',
+    required: false,
+    description:
+      'Case-insensitive literal substring of name or login identifier; trimmed, blank means no search',
+    schema: { type: 'string', maxLength: 254 },
+  })
+  @ApiQuery({
     name: 'role',
     required: false,
     schema: { type: 'string', enum: ['ADMIN', 'TECHNICIAN', 'RESIDENT'] },
@@ -94,6 +102,13 @@ export class AccountsController {
   @ApiQuery({
     name: 'isActive',
     required: false,
+    schema: { type: 'string', enum: ['true', 'false'] },
+  })
+  @ApiQuery({
+    name: 'unassignedOnly',
+    required: false,
+    description:
+      'Only Resident accounts with no unit assignment, applied before pagination',
     schema: { type: 'string', enum: ['true', 'false'] },
   })
   list(

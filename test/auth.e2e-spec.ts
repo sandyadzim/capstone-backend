@@ -274,6 +274,7 @@ describe('Authentication and sessions (e2e)', () => {
       '/api/reports/{id}/result',
       '/api/reports/{id}/start',
       '/api/reports/{id}/verify',
+      '/api/resident/unit',
       '/api/units',
       '/api/units/{id}',
       '/api/units/{id}/archive',

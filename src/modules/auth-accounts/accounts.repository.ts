@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, asc, count, eq, inArray, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { ApiErrorException } from '../../common/http/api-error.js';
 import { DatabaseService } from '../database/database.service.js';
 import type {
@@ -62,6 +62,21 @@ export class AccountsRepository {
             ? []
             : [eq(users.isActive, input.isActive)]),
         ];
+        if (input.unassignedOnly) {
+          filters.push(
+            eq(users.role, 'RESIDENT'),
+            sql`not exists (select 1 from ${units} where ${units.activeResidentUserId} = ${users.id})`,
+          );
+        }
+        if (input.q) {
+          const pattern = `%${input.q.replace(/[\\%_]/g, '\\$&')}%`;
+          filters.push(
+            or(
+              sql`${users.name} ILIKE ${pattern} ESCAPE E'\\\\'`,
+              sql`${users.loginIdentifier} ILIKE ${pattern} ESCAPE E'\\\\'`,
+            )!,
+          );
+        }
         const predicate = filters.length ? and(...filters) : undefined;
         const [totals] = await transaction
           .select({ total: count() })
@@ -79,7 +94,7 @@ export class AccountsRepository {
             ),
           )
           .where(predicate)
-          .orderBy(asc(users.name), asc(users.id))
+          .orderBy(desc(users.createdAt), desc(users.id))
           .limit(input.pageSize)
           .offset((input.page - 1) * input.pageSize);
         return {
