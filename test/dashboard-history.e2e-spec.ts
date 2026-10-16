@@ -190,8 +190,7 @@ describe('BE-13 close, history, and dashboard API (e2e)', () => {
       reportId: closed.id,
       type: 'MATERIAL',
       description: 'Seal',
-      quantity: '1.000',
-      unitPrice: '25.00',
+      price: '25.00',
     });
     await ctx.addReport(unit.id, 'REPORTED');
 
@@ -301,15 +300,13 @@ describe('BE-13 close, history, and dashboard API (e2e)', () => {
         reportId: closedA.id,
         type: 'MATERIAL',
         description: 'Small part',
-        quantity: '0.001',
-        unitPrice: '5.00',
+        price: '0.01',
       },
       {
         reportId: closedB.id,
         type: 'MATERIAL',
         description: 'Small part',
-        quantity: '0.001',
-        unitPrice: '5.00',
+        price: '0.01',
       },
     ]);
     const [otherProperty] = await ctx.db

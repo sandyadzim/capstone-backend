@@ -60,21 +60,27 @@ describe('maintenance result and cost schemas', () => {
           {
             type: 'SERVICE',
             description: 'Labor',
-            quantity: '999999999.999',
-            unitPrice: '999999999999.99',
+            price: '999999999999999999999.99',
           },
         ],
       }).success,
     ).toBe(true);
     for (const item of [
-      { type: 'OTHER', description: 'Labor', quantity: '1', unitPrice: '1' },
-      { type: 'SERVICE', description: ' ', quantity: '1', unitPrice: '1' },
-      { type: 'SERVICE', description: 'Labor', quantity: '0', unitPrice: '1' },
-      { type: 'SERVICE', description: 'Labor', quantity: '-1', unitPrice: '1' },
-      { type: 'SERVICE', description: 'Labor', quantity: '1.0000', unitPrice: '1' },
-      { type: 'SERVICE', description: 'Labor', quantity: '1000000000', unitPrice: '1' },
-      { type: 'SERVICE', description: 'Labor', quantity: '1', unitPrice: '1.001' },
-      { type: 'SERVICE', description: 'Labor', quantity: 1, unitPrice: '1' },
+      { type: 'OTHER', description: 'Labor', price: '1' },
+      { type: 'SERVICE', description: ' ', price: '1' },
+      { type: 'SERVICE', description: 'Labor', price: '-1' },
+      { type: 'SERVICE', description: 'Labor', price: '1.001' },
+      {
+        type: 'SERVICE',
+        description: 'Labor',
+        price: '1000000000000000000000',
+      },
+      { type: 'SERVICE', description: 'Labor', price: 1 },
+      { type: 'SERVICE', description: 'Labor', price: '1e3' },
+      { type: 'SERVICE', description: 'Labor', price: '01' },
+      { type: 'SERVICE', description: 'Labor', price: '1', quantity: '1' },
+      { type: 'SERVICE', description: 'Labor', quantity: '1', unitPrice: '1' },
+      { type: 'SERVICE', description: 'Labor', price: '1', subtotal: '1' },
     ]) {
       expect(costItemsSchema.safeParse({ items: [item] }).success).toBe(false);
     }
@@ -87,7 +93,9 @@ describe('maintenance result and cost schemas', () => {
   it('accepts either an omitted completion body or an empty object only', () => {
     expect(completeWorkSchema.parse(undefined)).toEqual({});
     expect(completeWorkSchema.parse({})).toEqual({});
-    expect(completeWorkSchema.safeParse({ receiptUrl: 'https://example.test' }).success)
-      .toBe(false);
+    expect(
+      completeWorkSchema.safeParse({ receiptUrl: 'https://example.test' })
+        .success,
+    ).toBe(false);
   });
 });

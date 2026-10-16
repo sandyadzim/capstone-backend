@@ -296,6 +296,22 @@ export class ReportsRepository {
         if (input.status) {
           predicates.push(eq(damageReports.status, input.status));
         }
+        if (input.ongoingOnly) {
+          predicates.push(
+            inArray(damageReports.status, [
+              'REPORTED',
+              'VERIFIED',
+              'ASSIGNED',
+              'IN_PROGRESS',
+              'COMPLETED',
+            ]),
+          );
+        }
+        if (input.historyOnly) {
+          predicates.push(
+            inArray(damageReports.status, ['CLOSED', 'REJECTED']),
+          );
+        }
         if (input.category) {
           predicates.push(eq(damageReports.category, input.category));
         }
@@ -467,9 +483,7 @@ export class ReportsRepository {
         id: costItems.id,
         type: costItems.type,
         description: costItems.description,
-        quantity: costItems.quantity,
-        unitPrice: costItems.unitPrice,
-        subtotal: sql<string>`round(${costItems.quantity} * ${costItems.unitPrice}, 2)::text`,
+        price: costItems.price,
         createdAt: costItems.createdAt,
         updatedAt: costItems.updatedAt,
       })
@@ -478,7 +492,7 @@ export class ReportsRepository {
       .orderBy(asc(costItems.createdAt), asc(costItems.id));
     const [costTotal] = await executor
       .select({
-        totalCost: sql<string>`coalesce(round(sum(${costItems.quantity} * ${costItems.unitPrice}), 2), 0.00)::text`,
+        totalCost: sql<string>`coalesce(sum(${costItems.price}), 0.00)::text`,
       })
       .from(costItems)
       .where(eq(costItems.reportId, id));
@@ -553,7 +567,7 @@ export class ReportsRepository {
               technician: safeAssignment.technician,
               assignedAt: safeAssignment.assignedAt,
               estimatedArrivalAt: safeAssignment.estimatedArrivalAt,
-              note: safeAssignment.note,
+              note: actor.role === 'RESIDENT' ? null : safeAssignment.note,
             }
           : null,
       };

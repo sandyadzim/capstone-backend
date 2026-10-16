@@ -299,8 +299,9 @@ describe('Reports API (e2e)', () => {
       .api('get', '/api/reports', 'RESIDENT')
       .query({ q: '  fan 100%_filter ' })
       .expect(200);
-    expect(literalSearch.body.data.map((report: { id: string }) => report.id))
-      .toEqual([literalMatch.id]);
+    expect(
+      literalSearch.body.data.map((report: { id: string }) => report.id),
+    ).toEqual([literalMatch.id]);
     const descriptionSearch = await ctx
       .api('get', '/api/reports', 'RESIDENT')
       .query({ q: 'description must not be searched' })
@@ -315,9 +316,9 @@ describe('Reports API (e2e)', () => {
       (report: { id: string }) => report.id,
     );
     expect(dateRangeIds).toEqual(
-      [verified.id, sameTimeReport.id].sort((left, right) =>
-        right.localeCompare(left),
-      ).concat(literalMatch.id),
+      [verified.id, sameTimeReport.id]
+        .sort((left, right) => right.localeCompare(left))
+        .concat(literalMatch.id),
     );
     expect(dateRange.body.meta.total).toBe(3);
 
@@ -325,16 +326,19 @@ describe('Reports API (e2e)', () => {
       .api('get', '/api/reports', 'RESIDENT')
       .query({ dateFrom: '2099-03-02' })
       .expect(200);
-    expect(dateFromOnly.body.data.map((report: { id: string }) => report.id))
-      .toEqual([wildcardDecoy.id]);
+    expect(
+      dateFromOnly.body.data.map((report: { id: string }) => report.id),
+    ).toEqual([wildcardDecoy.id]);
     const dateToOnly = await ctx
       .api('get', '/api/reports', 'RESIDENT')
       .query({ dateTo: '2099-03-01' })
       .expect(200);
-    expect(dateToOnly.body.data.map((report: { id: string }) => report.id))
-      .toContain(literalMatch.id);
-    expect(dateToOnly.body.data.map((report: { id: string }) => report.id))
-      .not.toContain(wildcardDecoy.id);
+    expect(
+      dateToOnly.body.data.map((report: { id: string }) => report.id),
+    ).toContain(literalMatch.id);
+    expect(
+      dateToOnly.body.data.map((report: { id: string }) => report.id),
+    ).not.toContain(wildcardDecoy.id);
 
     const combined = await ctx
       .api('get', '/api/reports', 'RESIDENT')
@@ -346,22 +350,26 @@ describe('Reports API (e2e)', () => {
         dateTo: '2099-03-01',
       })
       .expect(200);
-    expect(combined.body.data.map((report: { id: string }) => report.id))
-      .toEqual([literalMatch.id]);
+    expect(
+      combined.body.data.map((report: { id: string }) => report.id),
+    ).toEqual([literalMatch.id]);
     const finalPriority = await ctx
       .api('get', '/api/reports', 'ADMIN')
       .query({ priority: 'HIGH' })
       .expect(200);
-    expect(finalPriority.body.data.map((report: { id: string }) => report.id))
-      .toContain(verified.id);
+    expect(
+      finalPriority.body.data.map((report: { id: string }) => report.id),
+    ).toContain(verified.id);
     const proposedPriority = await ctx
       .api('get', '/api/reports', 'ADMIN')
       .query({ priority: 'MEDIUM' })
       .expect(200);
-    expect(proposedPriority.body.data.map((report: { id: string }) => report.id))
-      .toContain(residentLeak.id);
-    expect(proposedPriority.body.data.map((report: { id: string }) => report.id))
-      .not.toContain(verified.id);
+    expect(
+      proposedPriority.body.data.map((report: { id: string }) => report.id),
+    ).toContain(residentLeak.id);
+    expect(
+      proposedPriority.body.data.map((report: { id: string }) => report.id),
+    ).not.toContain(verified.id);
 
     const residentScope = await ctx
       .api('get', '/api/reports', 'RESIDENT')
@@ -381,7 +389,9 @@ describe('Reports API (e2e)', () => {
       .api('get', '/api/reports')
       .query({ dateFrom: '2026-03-02', dateTo: '2026-03-01' })
       .expect(400);
-    await ctx.api('get', '/api/reports?status=REPORTED&status=CLOSED').expect(400);
+    await ctx
+      .api('get', '/api/reports?status=REPORTED&status=CLOSED')
+      .expect(400);
     expect(listSpy).not.toHaveBeenCalled();
     listSpy.mockRestore();
   });
@@ -708,9 +718,7 @@ describe('Reports API (e2e)', () => {
     const residentAdminDetail = await ctx
       .api('get', `/api/reports/${adminReport.body.id}`, 'RESIDENT')
       .expect(200);
-    expect(residentAdminDetail.body.assignment.note).toBe(
-      'Check the replacement part.',
-    );
+    expect(residentAdminDetail.body.assignment.note).toBeNull();
     expect(residentAdminDetail.body.assignment).not.toHaveProperty(
       'assignedBy',
     );

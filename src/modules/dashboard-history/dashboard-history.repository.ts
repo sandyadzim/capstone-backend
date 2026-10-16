@@ -77,7 +77,7 @@ export class DashboardHistoryRepository {
             additionalNotes: maintenanceResults.additionalNotes,
             resultCreatedAt: maintenanceResults.createdAt,
             resultUpdatedAt: maintenanceResults.updatedAt,
-            totalCost: sql<string>`coalesce((select round(sum(${costItems.quantity} * ${costItems.unitPrice}), 2)::text from ${costItems} where ${costItems.reportId} = ${damageReports.id}), '0.00')`,
+            totalCost: sql<string>`coalesce((select sum(${costItems.price})::text from ${costItems} where ${costItems.reportId} = ${damageReports.id}), '0.00')`,
           })
           .from(damageReports)
           .innerJoin(units, eq(units.id, damageReports.unitId))
@@ -177,7 +177,7 @@ export class DashboardHistoryRepository {
           .where(eq(units.propertyId, INITIAL_PROPERTY_ID));
         const [costResult] = await transaction
           .select({
-            totalClosedCost: sql<string>`coalesce((select sum(per_report.total) from (select round(sum(ci.quantity * ci.unit_price), 2) as total from cost_items as ci inner join damage_reports as dr on dr.id = ci.report_id inner join units as u on u.id = dr.unit_id where dr.status = 'CLOSED' and u.property_id = ${INITIAL_PROPERTY_ID} group by dr.id) as per_report), 0)::numeric(1000, 2)::text`,
+            totalClosedCost: sql<string>`coalesce((select sum(ci.price) from cost_items as ci inner join damage_reports as dr on dr.id = ci.report_id inner join units as u on u.id = dr.unit_id where dr.status = 'CLOSED' and u.property_id = ${INITIAL_PROPERTY_ID}), 0)::numeric(1000, 2)::text`,
           })
           .from(sql`(select 1) as dashboard_seed`);
 

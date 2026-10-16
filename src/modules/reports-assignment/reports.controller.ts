@@ -92,6 +92,20 @@ export class ReportsController {
     schema: { type: 'string', enum: [...DAMAGE_REPORT_STATUSES] },
   })
   @ApiQuery({
+    name: 'ongoingOnly',
+    required: false,
+    description:
+      'Include only REPORTED, VERIFIED, ASSIGNED, IN_PROGRESS, and COMPLETED reports. Other filters still apply.',
+    schema: { type: 'boolean', default: false },
+  })
+  @ApiQuery({
+    name: 'historyOnly',
+    required: false,
+    description:
+      'Include only CLOSED and REJECTED reports. Other filters still apply; combining with ongoingOnly=true returns no reports.',
+    schema: { type: 'boolean', default: false },
+  })
+  @ApiQuery({
     name: 'category',
     required: false,
     schema: { type: 'string', enum: [...DAMAGE_CATEGORIES] },

@@ -2,22 +2,18 @@ import { z } from 'zod';
 import { COST_ITEM_TYPES } from '../database/schema.js';
 
 const requiredText = (max?: number) =>
-  z.string().trim().min(1).max(max ?? Number.MAX_SAFE_INTEGER);
-
-function decimal(maxIntegerDigits: number, maxScale: number, positive: boolean) {
-  return z
+  z
     .string()
-    .regex(
-      new RegExp(`^(?:0|[1-9]\\d*)(?:\\.\\d{1,${maxScale}})?$`),
-      'Must be a plain decimal string with supported precision',
-    )
-    .refine((value) => value.split('.')[0]!.length <= maxIntegerDigits, {
-      message: `Must have at most ${maxIntegerDigits} integer digits`,
-    })
-    .refine((value) => !positive || Number(value) > 0, {
-      message: 'Must be greater than zero',
-    });
-}
+    .trim()
+    .min(1)
+    .max(max ?? Number.MAX_SAFE_INTEGER);
+
+const price = z
+  .string()
+  .regex(
+    /^(?:0|[1-9]\d{0,20})(?:\.\d{1,2})?$/,
+    'Must be a nonnegative decimal string with at most 21 integer digits and 2 decimals',
+  );
 
 export const startWorkSchema = z
   .object({
@@ -45,17 +41,15 @@ export type MaintenanceResultInput = z.infer<typeof maintenanceResultSchema>;
 
 export const costItemsSchema = z
   .object({
-    items: z
-      .array(
-        z
-          .object({
-            type: z.enum(COST_ITEM_TYPES),
-            description: requiredText(240),
-            quantity: decimal(9, 3, true),
-            unitPrice: decimal(12, 2, false),
-          })
-          .strict(),
-      ),
+    items: z.array(
+      z
+        .object({
+          type: z.enum(COST_ITEM_TYPES),
+          description: requiredText(240),
+          price,
+        })
+        .strict(),
+    ),
   })
   .strict();
 

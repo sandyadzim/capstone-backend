@@ -114,12 +114,15 @@ export class MaintenanceExecutionController {
           items: {
             type: 'object',
             additionalProperties: false,
-            required: ['type', 'description', 'quantity', 'unitPrice'],
+            required: ['type', 'description', 'price'],
             properties: {
               type: { type: 'string', enum: ['SERVICE', 'MATERIAL'] },
               description: { type: 'string', minLength: 1, maxLength: 240 },
-              quantity: { type: 'string', example: '1.250' },
-              unitPrice: { type: 'string', example: '125000.00' },
+              price: {
+                type: 'string',
+                example: '125000.00',
+                pattern: '^(?:0|[1-9][0-9]{0,20})(?:[.][0-9]{1,2})?$',
+              },
             },
           },
         },

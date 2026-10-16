@@ -56,6 +56,14 @@ export const reportListSchema = z
       .default(20),
     q: z.string().trim().max(160).optional(),
     status: z.enum(DAMAGE_REPORT_STATUSES).optional(),
+    ongoingOnly: z
+      .enum(['true', 'false'])
+      .transform((value) => value === 'true')
+      .optional(),
+    historyOnly: z
+      .enum(['true', 'false'])
+      .transform((value) => value === 'true')
+      .optional(),
     category: z.enum(DAMAGE_CATEGORIES).optional(),
     priority: z.enum(PRIORITIES).optional(),
     dateFrom: z.iso.date().optional(),

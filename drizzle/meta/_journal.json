@@ -36,6 +36,13 @@
       "when": 1791121636507,
       "tag": "0004_breezy_ezekiel_stane",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792151414188,
+      "tag": "0005_cost_item_prices",
+      "breakpoints": true
     }
   ]
 }

@@ -144,8 +144,7 @@ export class MaintenanceExecutionRepository {
     items: Array<{
       type: 'SERVICE' | 'MATERIAL';
       description: string;
-      quantity: string;
-      unitPrice: string;
+      price: string;
     }>,
   ) {
     const access = await this.lockAssignedWork(transaction, actor, reportId);

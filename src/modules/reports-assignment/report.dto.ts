@@ -74,7 +74,8 @@ export class MaintenanceResultResponseDto {
   @ApiProperty() inspectionResult!: string;
   @ApiProperty() problemFound!: string;
   @ApiProperty() repairAction!: string;
-  @ApiProperty({ type: String, nullable: true }) additionalNotes!: string | null;
+  @ApiProperty({ type: String, nullable: true }) additionalNotes!:
+    string | null;
   @ApiProperty({ type: String, format: 'date-time' }) createdAt!: Date;
   @ApiProperty({ type: String, format: 'date-time' }) updatedAt!: Date;
 }
@@ -83,9 +84,7 @@ export class CostItemResponseDto {
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiProperty({ enum: COST_ITEM_TYPES }) type!: 'SERVICE' | 'MATERIAL';
   @ApiProperty() description!: string;
-  @ApiProperty({ type: String, example: '1.250' }) quantity!: string;
-  @ApiProperty({ type: String, example: '125000.00' }) unitPrice!: string;
-  @ApiProperty({ type: String, example: '156250.00' }) subtotal!: string;
+  @ApiProperty({ type: String, example: '125000.00' }) price!: string;
   @ApiProperty({ type: String, format: 'date-time' }) createdAt!: Date;
   @ApiProperty({ type: String, format: 'date-time' }) updatedAt!: Date;
 }

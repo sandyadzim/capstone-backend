@@ -341,8 +341,7 @@ export const costItems = pgTable(
       .references(() => damageReports.id, { onDelete: 'restrict' }),
     type: varchar('type', { length: 12 }).$type<CostItemType>().notNull(),
     description: varchar('description', { length: 240 }).notNull(),
-    quantity: numeric('quantity', { precision: 12, scale: 3 }).notNull(),
-    unitPrice: numeric('unit_price', { precision: 14, scale: 2 }).notNull(),
+    price: numeric('price', { precision: 23, scale: 2 }).notNull(),
     ...timestamps,
   },
   (table) => [
@@ -351,8 +350,7 @@ export const costItems = pgTable(
       'ck_cost_items_description_nonblank',
       sql`length(btrim(${table.description})) > 0`,
     ),
-    check('ck_cost_items_quantity_positive', sql`${table.quantity} > 0`),
-    check('ck_cost_items_unit_price_nonnegative', sql`${table.unitPrice} >= 0`),
+    check('ck_cost_items_price_nonnegative', sql`${table.price} >= 0`),
     index('ix_cost_items_report').on(table.reportId),
   ],
 );

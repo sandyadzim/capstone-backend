@@ -26,12 +26,14 @@ describe('Maintenance completion API (e2e)', () => {
   }
 
   function saveResult(reportId: string) {
-    return ctx.api('put', `/api/reports/${reportId}/result`, 'TECHNICIAN').send({
-      inspectionResult: '  Checked the pipe  ',
-      problemFound: ' Pipe joint was leaking ',
-      repairAction: ' Replaced the seal ',
-      additionalNotes: ' ',
-    });
+    return ctx
+      .api('put', `/api/reports/${reportId}/result`, 'TECHNICIAN')
+      .send({
+        inspectionResult: '  Checked the pipe  ',
+        problemFound: ' Pipe joint was leaking ',
+        repairAction: ' Replaced the seal ',
+        additionalNotes: ' ',
+      });
   }
 
   function uploadReceipt(reportId: string) {
@@ -71,26 +73,36 @@ describe('Maintenance completion API (e2e)', () => {
           {
             type: 'SERVICE',
             description: 'Labor',
-            quantity: '0.1',
-            unitPrice: '10.05',
+            price: '1.01',
           },
           {
             type: 'MATERIAL',
             description: 'Seal',
-            quantity: '0.1',
-            unitPrice: '10.05',
+            price: '1.01',
           },
         ],
       })
       .expect(200);
-    expect(costs.body.costItems.map((item: { subtotal: string }) => item.subtotal))
-      .toEqual(['1.01', '1.01']);
-    expect(costs.body.totalCost).toBe('2.01');
+    expect(
+      costs.body.costItems.map((item: { price: string }) => item.price),
+    ).toEqual(['1.01', '1.01']);
+    expect(costs.body.totalCost).toBe('2.02');
+    for (const item of costs.body.costItems) {
+      expect(item).not.toHaveProperty('quantity');
+      expect(item).not.toHaveProperty('unitPrice');
+      expect(item).not.toHaveProperty('subtotal');
+    }
     await ctx
       .api('put', `/api/reports/${report.id}/cost-items`, 'TECHNICIAN')
-      .send({ items: [{
-        type: 'SERVICE', description: 'Labor', quantity: '2.000', unitPrice: '5.25',
-      }] })
+      .send({
+        items: [
+          {
+            type: 'SERVICE',
+            description: 'Labor',
+            price: '10.50',
+          },
+        ],
+      })
       .expect(200);
     const savedCosts = await ctx.db
       .select()
@@ -109,8 +121,7 @@ describe('Maintenance completion API (e2e)', () => {
       ctx.api('post', `/api/reports/${report.id}/complete`, 'TECHNICIAN'),
     ]);
     expect([completed.status, repeated.status].sort((a, b) => a - b)).toEqual([
-      200,
-      409,
+      200, 409,
     ]);
     const detail = await ctx
       .api('get', `/api/reports/${report.id}`)
@@ -140,9 +151,9 @@ describe('Maintenance completion API (e2e)', () => {
       .api('post', `/api/reports/${report.id}/complete`, 'TECHNICIAN')
       .expect(409);
     expect(noResult.body.message).toContain('result');
-    expect((await ctx.api('get', `/api/reports/${report.id}`)).body.status).toBe(
-      'IN_PROGRESS',
-    );
+    expect(
+      (await ctx.api('get', `/api/reports/${report.id}`)).body.status,
+    ).toBe('IN_PROGRESS');
 
     await saveResult(report.id).expect(200);
     await ctx
@@ -200,17 +211,22 @@ describe('Maintenance completion API (e2e)', () => {
       .expect(409);
 
     for (const [index, status] of (
-      ['REPORTED', 'VERIFIED', 'REJECTED', 'ASSIGNED', 'COMPLETED', 'CLOSED'] as const
+      [
+        'REPORTED',
+        'VERIFIED',
+        'REJECTED',
+        'ASSIGNED',
+        'COMPLETED',
+        'CLOSED',
+      ] as const
     ).entries()) {
       const unit = await ctx.createUnit(`COMPLETE-STATUS-${index + 2}`);
       const otherStatus = await ctx.addReport(unit.id, status);
-      await ctx.db
-        .insert(assignments)
-        .values({
-          reportId: otherStatus.id,
-          technicianUserId: ctx.ids.actorIds.TECHNICIAN,
-          assignedByUserId: ctx.ids.actorIds.ADMIN,
-        });
+      await ctx.db.insert(assignments).values({
+        reportId: otherStatus.id,
+        technicianUserId: ctx.ids.actorIds.TECHNICIAN,
+        assignedByUserId: ctx.ids.actorIds.ADMIN,
+      });
       await ctx
         .api('put', `/api/reports/${otherStatus.id}/cost-items`, 'TECHNICIAN')
         .send({ items: [] })
@@ -248,11 +264,24 @@ describe('Maintenance completion API (e2e)', () => {
   it('documents the result, cost item, and completion operations in OpenAPI', async () => {
     const response = await ctx.api('get', '/api/docs-json', null).expect(200);
     const { paths } = response.body;
-    expect(paths['/api/reports/{id}/result'].put.responses['200']).toBeDefined();
-    expect(paths['/api/reports/{id}/cost-items'].put.responses['200']).toBeDefined();
-    expect(paths['/api/reports/{id}/complete'].post.responses['409']).toBeDefined();
-    expect(JSON.stringify(paths['/api/reports/{id}/cost-items'].put.requestBody))
-      .toContain('unitPrice');
+    expect(
+      paths['/api/reports/{id}/result'].put.responses['200'],
+    ).toBeDefined();
+    expect(
+      paths['/api/reports/{id}/cost-items'].put.responses['200'],
+    ).toBeDefined();
+    expect(
+      paths['/api/reports/{id}/complete'].post.responses['409'],
+    ).toBeDefined();
+    expect(
+      JSON.stringify(paths['/api/reports/{id}/cost-items'].put.requestBody),
+    ).toContain('price');
+    const properties =
+      response.body.components.schemas.CostItemResponseDto.properties;
+    expect(properties.price).toBeDefined();
+    expect(properties.quantity).toBeUndefined();
+    expect(properties.unitPrice).toBeUndefined();
+    expect(properties.subtotal).toBeUndefined();
   });
 
   it('rolls back a failed cost replacement and a completion without changing saved data', async () => {
@@ -260,35 +289,99 @@ describe('Maintenance completion API (e2e)', () => {
     await saveResult(report.id).expect(200);
     await ctx
       .api('put', `/api/reports/${report.id}/cost-items`, 'TECHNICIAN')
-      .send({ items: [{ type: 'SERVICE', description: 'Old', quantity: '1', unitPrice: '2' }] })
+      .send({ items: [{ type: 'SERVICE', description: 'Old', price: '2' }] })
       .expect(200);
-    await ctx.db.execute(sql.raw(
-      "ALTER TABLE cost_items ADD CONSTRAINT test_cost_items_no_trigger_failure CHECK (description <> 'TriggerFailure')",
-    ));
+    await ctx.db.execute(
+      sql.raw(
+        "ALTER TABLE cost_items ADD CONSTRAINT test_cost_items_no_trigger_failure CHECK (description <> 'TriggerFailure')",
+      ),
+    );
     await ctx
       .api('put', `/api/reports/${report.id}/cost-items`, 'TECHNICIAN')
-      .send({ items: [{ type: 'MATERIAL', description: 'TriggerFailure', quantity: '1', unitPrice: '1' }] })
+      .send({
+        items: [
+          { type: 'MATERIAL', description: 'TriggerFailure', price: '1' },
+        ],
+      })
       .expect(500);
-    await ctx.db.execute(sql.raw(
-      'ALTER TABLE cost_items DROP CONSTRAINT test_cost_items_no_trigger_failure',
-    ));
+    await ctx.db.execute(
+      sql.raw(
+        'ALTER TABLE cost_items DROP CONSTRAINT test_cost_items_no_trigger_failure',
+      ),
+    );
     const rows = await ctx.db
       .select()
       .from(costItems)
       .where(eq(costItems.reportId, report.id));
     expect(rows).toHaveLength(1);
     await uploadReceipt(report.id).expect(200);
-    await ctx.db.execute(sql.raw(
-      "ALTER TABLE damage_reports ADD CONSTRAINT test_reports_no_completed CHECK (status <> 'COMPLETED')",
-    ));
+    await ctx.db.execute(
+      sql.raw(
+        "ALTER TABLE damage_reports ADD CONSTRAINT test_reports_no_completed CHECK (status <> 'COMPLETED')",
+      ),
+    );
     await ctx
       .api('post', `/api/reports/${report.id}/complete`, 'TECHNICIAN')
       .expect(500);
     expect(
       (await ctx.api('get', `/api/reports/${report.id}`)).body.status,
     ).toBe('IN_PROGRESS');
-    await ctx.db.execute(sql.raw(
-      'ALTER TABLE damage_reports DROP CONSTRAINT test_reports_no_completed',
-    ));
+    await ctx.db.execute(
+      sql.raw(
+        'ALTER TABLE damage_reports DROP CONSTRAINT test_reports_no_completed',
+      ),
+    );
+  });
+});
+
+describe('Price-only cost contract', () => {
+  const ctx = usePropertyUnitsContext();
+  it('accepts exact large/zero prices, sums them, and rejects removed fields without replacing saved data', async () => {
+    const unit = await ctx.createUnit('PRICE-ONLY');
+    const report = await ctx.addReport(unit.id, 'IN_PROGRESS');
+    await ctx.db.insert(assignments).values({
+      reportId: report.id,
+      technicianUserId: ctx.ids.actorIds.TECHNICIAN,
+      assignedByUserId: ctx.ids.actorIds.ADMIN,
+    });
+    const items = [
+      {
+        type: 'SERVICE',
+        description: 'Large amount',
+        price: '999999999999999999999.99',
+      },
+      { type: 'MATERIAL', description: 'Zero', price: '0' },
+      { type: 'SERVICE', description: 'Cent', price: '0.01' },
+    ];
+    const response = await ctx
+      .api('put', `/api/reports/${report.id}/cost-items`, 'TECHNICIAN')
+      .send({ items })
+      .expect(200);
+    expect(response.body.totalCost).toBe('1000000000000000000000.00');
+    expect(
+      response.body.costItems
+        .map((item: { price: string }) => item.price)
+        .sort(),
+    ).toEqual(['0.00', '0.01', '999999999999999999999.99']);
+    for (const item of [
+      { type: 'SERVICE', description: 'Legacy', quantity: '1', unitPrice: '1' },
+      { type: 'SERVICE', description: 'Extra', price: '1', subtotal: '1' },
+      { type: 'SERVICE', description: 'Negative', price: '-1' },
+      { type: 'SERVICE', description: 'Precision', price: '0.001' },
+      {
+        type: 'SERVICE',
+        description: 'Overflow',
+        price: '1000000000000000000000',
+      },
+    ])
+      await ctx
+        .api('put', `/api/reports/${report.id}/cost-items`, 'TECHNICIAN')
+        .send({ items: [item] })
+        .expect(400);
+    const retained = await ctx
+      .api('get', `/api/reports/${report.id}`, 'TECHNICIAN')
+      .expect(200);
+    expect(retained.body.totalCost).toBe(response.body.totalCost);
+    expect(retained.body.costItems).toHaveLength(3);
   });
 });

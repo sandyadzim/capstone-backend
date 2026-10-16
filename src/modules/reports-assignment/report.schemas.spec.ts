@@ -104,6 +104,31 @@ describe('report schemas', () => {
     }
   });
 
+  it('validates the optional ongoingOnly filter without changing existing defaults', () => {
+    expect(reportListSchema.parse({}).ongoingOnly).toBeUndefined();
+    expect(reportListSchema.parse({ ongoingOnly: 'true' }).ongoingOnly).toBe(
+      true,
+    );
+    expect(reportListSchema.parse({ ongoingOnly: 'false' }).ongoingOnly).toBe(
+      false,
+    );
+    for (const ongoingOnly of ['', 'TRUE', '1', true, ['true', 'false']]) {
+      expect(reportListSchema.safeParse({ ongoingOnly }).success).toBe(false);
+    }
+  });
+  it('validates the optional historyOnly filter without changing existing defaults', () => {
+    expect(reportListSchema.parse({}).historyOnly).toBeUndefined();
+    expect(reportListSchema.parse({ historyOnly: 'true' }).historyOnly).toBe(
+      true,
+    );
+    expect(reportListSchema.parse({ historyOnly: 'false' }).historyOnly).toBe(
+      false,
+    );
+    for (const historyOnly of ['', 'TRUE', '1', true, ['true', 'false']]) {
+      expect(reportListSchema.safeParse({ historyOnly }).success).toBe(false);
+    }
+  });
+
   it('validates verify and reject decisions with optional internal notes', () => {
     expect(reportVerifySchema.parse({ finalPriority: 'HIGH' })).toEqual({
       finalPriority: 'HIGH',
