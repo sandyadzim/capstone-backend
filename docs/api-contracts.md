@@ -49,6 +49,7 @@ Status HTTP dan `code` dapat dipakai untuk alur aplikasi. `message` ditujukan un
 | `POST`   | `/api/auth/logout`               | Publik; menghapus sesi saat tersedia                      | `204`                                             |
 | `GET`    | `/api/health`                    | Publik                                                    | `200`, `{ "status": "ok" }`                       |
 | `GET`    | `/api/property`                  | Semua role dengan sesi                                    | `200`, profil                                     |
+| `GET`    | `/api/resident/unit`             | RESIDENT; identitas dari sesi                             | `200`, `{ unit }` atau `{ unit: null }`           |
 | `PATCH`  | `/api/property`                  | ADMIN                                                     | `200`, profil diperbarui                          |
 | `GET`    | `/api/units`                     | ADMIN                                                     | `200`, `{ data, meta }`                           |
 | `POST`   | `/api/units`                     | ADMIN                                                     | `201`, unit                                       |
@@ -81,15 +82,17 @@ Status HTTP dan `code` dapat dipakai untuk alur aplikasi. `message` ditujukan un
 | `PUT`    | `/api/reports/:id/receipt`       | TECHNICIAN pemilik assignment, laporan `IN_PROGRESS`      | `200`, nota dipasang atau diganti                 |
 | `PUT`    | `/api/property/logo`             | ADMIN                                                     | `200`, profil dengan URL logo                     |
 
-Detail profil dan unggah/ganti logo ada di [panduan property](features/property.md); payload unit, status hunian, penempatan, dan arsip ada di [panduan unit](features/units.md); akun dan peran ada di [panduan akun](features/accounts.md). Mutasi memakai body strict; PATCH akun/unit minimal satu field. Profil hanya menerima `logoUrl: null` untuk menghapus referensi logo melalui JSON; unggah/ganti logo memakai `PUT /api/property/logo` dengan multipart field `file`.
+## Panduan integrasi
 
-Detail payload auth dan contoh pemakaian browser ada di [panduan autentikasi](features/authentication.md). Login gagal memakai `401 UNAUTHORIZED` dengan pesan generik, baik identifier tidak dikenal maupun password salah. Input login invalid memakai `400 VALIDATION_ERROR`.
+Payload, validasi, dan alur per fitur:
 
-Create, review, detail, pagination laporan, pembatasan akses per role, dan bentuk respons tersedia di [panduan laporan](features/reports.md). Nomor laporan dialokasikan backend dari sequence PostgreSQL.
-
-Daftar tugas, pencatatan hasil/biaya, dan pengiriman completion Teknisi tersedia di [panduan tugas Teknisi](features/technician-work.md). Upload file memakai multipart field `file`, sesi yang sama dengan REST API, dan mengembalikan URL publik setelah URL tersimpan. Nilai `UPLOADTHING_TOKEN` hanya disetel di environment backend.
-
-Penutupan pekerjaan oleh Admin, akses riwayat per unit, bentuk DTO yang disamarkan, dan definisi metrik dashboard tersedia di [panduan riwayat dan dashboard](features/dashboard-history.md).
+- [Autentikasi](features/authentication.md): login, sesi, logout, dan contoh browser.
+- [Property](features/property.md): profil dan logo.
+- [Unit](features/units.md): unit, penempatan, dan arsip.
+- [Akun](features/accounts.md): pencarian, role/status, password, dan guarded placement.
+- [Laporan](features/reports.md): create, filter, akses, review, dan assignment.
+- [Tugas Teknisi](features/technician-work.md): mulai kerja, hasil, biaya, upload, dan completion.
+- [Riwayat dan dashboard](features/dashboard-history.md): closure, riwayat unit, dan metrik.
 
 ## Enum domain
 
@@ -115,10 +118,18 @@ Status tampilan unit dihitung dari maintenance flag dan relasi RESIDENT aktif: `
 
 ## Pagination dan filter
 
-`GET /api/units` menerima `page` (default 1), `pageSize` (default 20, maksimum 100), serta `isArchived` (tepat string `true`/`false`, default `false`). Integer harus positif, berupa digit, dan menghasilkan offset dalam rentang integer aman JavaScript. Query tambahan atau berulang ditolak. Respons adalah `{ data, meta: { page, pageSize, total, totalPages } }`; halaman melampaui hasil mengembalikan daftar kosong. Urutan: `unitNumber ASC`, lalu `id ASC`. Filter arsip memilih hanya unit dengan nilai arsip tersebut pada properti Phase 1.
+Daftar unit, akun, dan laporan mengembalikan `{ data, meta: { page, pageSize, total, totalPages } }`. Default `page=1`, `pageSize=20` (maksimum 100). Integer harus positif dengan offset aman; halaman di luar hasil mengembalikan `data: []`. Parameter tambahan/berulang atau nilai invalid menghasilkan `400 VALIDATION_ERROR`.
 
-`GET /api/reports` menerima pagination `page` (default 1) dan `pageSize` (default 20, maksimum 100), serta filter opsional `q`, `status`, `category`, `priority`, `dateFrom`, dan `dateTo`. `q` mencari potongan nomor laporan atau judul tanpa membedakan huruf besar/kecil; spasi tepi dibuang dan panjang maksimum 160 karakter. `status`, `category`, dan `priority` menerima satu enum valid. Filter prioritas memakai prioritas final bila ada, atau prioritas usulan pada laporan yang belum ditinjau. Tanggal memakai format `YYYY-MM-DD` pada `reportedAt` dan zona kalender `Asia/Jakarta`; kedua batas bersifat inklusif dan masing-masing boleh dikirim sendiri. `dateFrom` harus pada atau sebelum `dateTo` bila keduanya dikirim.
+Filter dan cakupan akses diterapkan sebelum count/pagination. Pencarian memakai substring case-insensitive, trim, dengan `%`, `_`, dan `\\` sebagai karakter literal; kosong berarti tanpa pencarian. Filter berbeda digabung dengan AND.
 
-Filter yang berbeda digabungkan dengan AND. Pencarian memeriksa nomor dan judul dengan OR; `%`, `_`, dan `\` diperlakukan sebagai karakter literal. Parameter tambahan, berulang, tanggal tidak valid, atau enum tidak dikenal menghasilkan `400 VALIDATION_ERROR`. Query kosong atau hanya berisi spasi berarti tanpa pencarian. Respons `{ data, meta: { page, pageSize, total, totalPages } }` menghitung total setelah filter dan cakupan akses aktor. Urutan tetap `reportedAt DESC` lalu `id DESC`; halaman di luar hasil menghasilkan `data: []`.
+| Daftar  | Filter                                                                                                | Urutan                       |
+| ------- | ----------------------------------------------------------------------------------------------------- | ---------------------------- |
+| Unit    | `q` (maks. 40), `displayStatus`, `isArchived` (default `false`)                                       | `createdAt DESC`, `id DESC`  |
+| Akun    | `q` (maks. 254), `role`, `isActive`, `unassignedOnly`                                                 | `createdAt DESC`, `id DESC`  |
+| Laporan | `q` (maks. 160), `status`, `ongoingOnly`, `historyOnly`, `category`, `priority`, `dateFrom`, `dateTo` | `reportedAt DESC`, `id DESC` |
 
-`GET /api/accounts` menerima `page` (default 1), `pageSize` (default 20, maksimum 100), serta filter opsional `role` dan `isActive` (tepat string `true`/`false`). Tanpa filter status, akun aktif dan nonaktif disertakan. Respons `{ data, meta }`, urutan `name ASC` lalu `id ASC`; halaman di luar hasil kosong. Gunakan `role=TECHNICIAN&isActive=true` untuk daftar teknisi aktif.
+Filter boolean query menerima tepat string `true`/`false`. Detail nilai, prioritas, tanggal WIB, dan kombinasi filter ada di panduan fitur di atas.
+
+## Perubahan kontrak biaya
+
+Cost items memakai `price`, menggantikan `quantity`, `unitPrice`, dan `subtotal`. Total dijumlahkan secara presisi. Terapkan migrasi `0005_cost_item_prices` bersama frontend yang sesuai; lihat [validasi dan migrasi](features/technician-work.md#migrasi-dari-biaya-berkuantitas).

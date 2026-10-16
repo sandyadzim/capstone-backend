@@ -7,7 +7,7 @@ Format error konsisten dan daftar status dapat dilihat di [kontrak API](../api-c
 ## Konfigurasi
 
 - Base URL lokal: `http://localhost:3001/api` (port dapat berubah melalui `PORT`).
-- Tambahkan origin frontend ke `CORS_ORIGINS` backend, misalnya `http://localhost:5173`.
+- Tambahkan origin frontend ke `CORS_ORIGINS` backend. Contoh lokal untuk `property`: `CORS_ORIGINS=http://localhost:5173,http://localhost:5174`. Restart backend setelah mengubah `.env`; default kode tetap port 5173 bila variabel ini tidak diisi.
 - Request dari browser harus mengirim credentials agar cookie sesi ikut dikirim.
 - Jangan membaca atau menyimpan `__Host-sid` di `localStorage`; cookie tersebut `HttpOnly`.
 
@@ -112,18 +112,20 @@ if (!response.ok) {
 
 ## Error dan akses
 
-| Kondisi | Status |
-| --- | ---: |
-| Login berhasil | `200` |
-| Identifier atau password salah / akun tidak aktif | `401` |
-| Body login tidak valid atau berisi field tambahan | `400` |
-| Origin tidak dipercaya untuk request yang dilindungi CSRF | `403` |
-| `/auth/me` tanpa sesi yang valid | `401` |
-| Logout berhasil | `204` |
+| Kondisi                                                   | Status |
+| --------------------------------------------------------- | -----: |
+| Login berhasil                                            |  `200` |
+| Identifier atau password salah / akun tidak aktif         |  `401` |
+| Body login tidak valid atau berisi field tambahan         |  `400` |
+| Origin tidak dipercaya untuk request yang dilindungi CSRF |  `403` |
+| `/auth/me` tanpa sesi yang valid                          |  `401` |
+| Logout berhasil                                           |  `204` |
 
 Login memberikan pesan generik untuk identifier yang tidak dikenal dan password yang salah. Jangan mengandalkan pesan error untuk membedakan kondisi tersebut.
 
 Login, logout, dan health check adalah endpoint publik. Endpoint lain dilindungi autentikasi secara default. Pemeriksaan role hanya berlaku pada endpoint yang secara eksplisit menerapkan decorator `@Roles(...)`.
+
+Konfigurasi CORS yang sama dipakai sebagai trusted origins CSRF. Proxy development Vite milik `property` mempertahankan header `Origin`, sehingga request mutasi melalui proxy tetap membutuhkan origin frontend yang terdaftar. Untuk request langsung tanpa proxy, gunakan `VITE_API_BASE_URL=http://localhost:3001/api` pada frontend. Daftar origin production harus disetel sesuai deployment sebenarnya; jangan memakai wildcard atau menambahkan origin yang tidak digunakan.
 
 ## Masa berlaku sesi
 

@@ -52,16 +52,20 @@ Respons berbentuk `{ "data": [...], "meta": { "page": 1, "pageSize": 20, "total"
 
 Pencarian dan filter dapat digabungkan pada himpunan laporan yang boleh dilihat aktor:
 
-| Query | Perilaku |
-| ----- | -------- |
-| `q` | Potongan nomor laporan atau judul, case-insensitive; trim spasi tepi, maksimum 160 karakter. Kosong berarti tidak mencari. |
-| `status` | Satu status laporan yang valid. |
-| `category` | Satu kategori laporan yang valid. |
-| `priority` | `LOW`, `MEDIUM`, atau `HIGH`; memakai prioritas final, atau prioritas usulan selama laporan belum ditinjau. |
-| `dateFrom` | Tanggal `YYYY-MM-DD` inklusif berdasarkan `reportedAt` dalam kalender `Asia/Jakarta`. |
-| `dateTo` | Tanggal `YYYY-MM-DD` inklusif berdasarkan `reportedAt` dalam kalender `Asia/Jakarta`. |
+| Query         | Perilaku                                                                                                                                                                         |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `q`           | Potongan nomor laporan atau judul, case-insensitive; trim spasi tepi, maksimum 160 karakter. Kosong berarti tidak mencari.                                                       |
+| `status`      | Satu status laporan yang valid.                                                                                                                                                  |
+| `ongoingOnly` | Opsional, tepat `true`/`false`. `true` mencakup `REPORTED`, `VERIFIED`, `ASSIGNED`, `IN_PROGRESS`, dan `COMPLETED`; default/tanpa parameter atau `false` tidak membatasi status. |
+| `historyOnly` | Opsional, tepat `true`/`false`. `true` mencakup `CLOSED` dan `REJECTED`; default/tanpa parameter atau `false` tidak membatasi status.                                            |
+| `category`    | Satu kategori laporan yang valid.                                                                                                                                                |
+| `priority`    | `LOW`, `MEDIUM`, atau `HIGH`; memakai prioritas final, atau prioritas usulan selama laporan belum ditinjau.                                                                      |
+| `dateFrom`    | Tanggal `YYYY-MM-DD` inklusif berdasarkan `reportedAt` dalam kalender `Asia/Jakarta`.                                                                                            |
+| `dateTo`      | Tanggal `YYYY-MM-DD` inklusif berdasarkan `reportedAt` dalam kalender `Asia/Jakarta`.                                                                                            |
 
-Filter yang berbeda berlaku sekaligus. Pencarian mencocokkan nomor atau judul; karakter `%`, `_`, dan `\` dicari sebagai teks literal. `dateFrom` atau `dateTo` boleh digunakan sendiri; jika keduanya diberikan, tanggal awal tidak boleh melewati tanggal akhir.
+Filter berlaku dengan AND sebelum count/pagination; `ongoingOnly=true&historyOnly=true` atau `ongoingOnly=true&status=CLOSED` menghasilkan daftar kosong. Pencarian memperlakukan `%`, `_`, dan `\\` secara literal. Batas tanggal boleh dikirim sendiri; jika lengkap, `dateFrom` tidak boleh melewati `dateTo`.
+
+Resident memakai `ongoingOnly=true` untuk Ongoing dan `historyOnly=true` untuk History (`pageSize=10`). Keduanya mencakup laporan unit aktif saat ini, termasuk pembuat lain; bukan riwayat pribadi lintas unit. Homepage mengambil halaman pertama Ongoing.
 
 Contoh pencarian dan filter gabungan:
 
@@ -73,9 +77,9 @@ Admin melihat semua laporan properti Phase 1, Resident melihat laporan unit yang
 
 `GET /api/reports/:id` menggunakan cakupan yang sama. Laporan yang tidak ditemukan dan laporan di luar cakupan sama-sama menghasilkan `404 NOT_FOUND`. Detail memuat unit, deskripsi, status/prioritas, foto, dan assignment beserta estimasi bila tersedia. Respons Admin turut memuat identitas pembuat/pelapor/reviewer/closer dan pemberi assignment. Respons Resident dan Technician tidak memuat identitas audit tersebut atau pemberi assignment.
 
-Detail juga memuat `maintenanceResult` (atau `null`) dan `totalCost` sebagai string dua desimal. Admin dan Teknisi melihat `costItems`; Resident tidak menerima rincian biaya. Resident tetap dapat melihat hasil pekerjaan dan total pada laporan yang dapat diaksesnya. Nota tetap disembunyikan dari Resident. `totalCost` dijumlahkan dari nilai presisi penuh tiap baris, sedangkan subtotal item dibulatkan ke dua desimal; karena itu penjumlahan subtotal yang ditampilkan dapat berbeda satu sen dari total.
+Detail juga memuat `maintenanceResult` (atau `null`) dan `totalCost` sebagai string dua desimal. Admin dan Teknisi melihat `costItems`; Resident tidak menerima rincian biaya. Resident tetap dapat melihat hasil pekerjaan dan total pada laporan yang dapat diaksesnya. Nota tetap disembunyikan dari Resident. `totalCost` adalah penjumlahan langsung `price` setiap baris menggunakan PostgreSQL NUMERIC, sehingga sama dengan jumlah harga item yang ditampilkan.
 
-Baris biaya berisi `id`, `type` (`SERVICE` atau `MATERIAL`), `description`, `quantity`, `unitPrice`, `subtotal`, `createdAt`, dan `updatedAt`. Kuantitas serta harga dikirim dan dikembalikan sebagai string desimal agar presisi PostgreSQL tidak hilang pada JavaScript.
+Baris biaya berisi `id`, `type` (`SERVICE` atau `MATERIAL`), `description`, `price`, `createdAt`, dan `updatedAt`. Harga merupakan jumlah penuh per item dan dikembalikan sebagai string dua desimal agar presisi PostgreSQL tidak hilang pada JavaScript. Tidak ada quantity, unitPrice atau subtotal.
 
 ## Review laporan oleh Admin
 
@@ -130,7 +134,7 @@ Content-Type: application/json
 
 `technicianUserId` wajib berupa UUID akun dengan role `TECHNICIAN` yang aktif. `note` opsional; bila dikirim, teks dipangkas dan tidak boleh kosong. Field tambahan seperti `status`, `assignedByUserId`, dan `assignedAt` ditolak. Pilihan Teknisi aktif tersedia melalui `GET /api/accounts?role=TECHNICIAN&isActive=true`.
 
-Sukses mengembalikan `200` dengan status `ASSIGNED` dan detail assignment (`technician`, `assignedBy`, `assignedAt`, `estimatedArrivalAt`, `note`). Estimasi awal bernilai `null`. Catatan assignment ditampilkan untuk semua aktor yang berhak melihat detail laporan; identitas `assignedBy` hanya tersedia pada respons Admin. Teknisi yang ditugaskan dapat membaca laporan pada daftar dan detail. Teknisi lain mendapat `404`.
+Sukses mengembalikan `200` dengan status `ASSIGNED` dan detail assignment (`technician`, `assignedBy`, `assignedAt`, `estimatedArrivalAt`, `note`). Estimasi awal bernilai `null`. Catatan assignment hanya dikirim ke Admin dan Teknisi yang ditugaskan (Resident menerima note null); identitas `assignedBy` hanya tersedia pada respons Admin. Teknisi yang ditugaskan dapat membaca laporan pada daftar dan detail. Teknisi lain mendapat `404`.
 
 Laporan yang hilang/di luar properti dan akun Teknisi yang tidak ditemukan menghasilkan `404 NOT_FOUND`. Akun nonaktif atau bukan Teknisi, laporan yang belum `VERIFIED`, dan laporan yang sudah memiliki assignment menghasilkan `409 CONFLICT`. Request assignment berulang juga menghasilkan konflik; ambil ulang detail laporan untuk melihat keadaan terbaru.
 

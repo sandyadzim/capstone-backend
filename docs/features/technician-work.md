@@ -74,20 +74,22 @@ Content-Type: application/json
     {
       "type": "SERVICE",
       "description": "Jasa teknisi",
-      "quantity": "1.500",
-      "unitPrice": "125000.00"
+      "price": "187500.00"
     },
     {
       "type": "MATERIAL",
       "description": "Seal pipa",
-      "quantity": "2",
-      "unitPrice": "15000.00"
+      "price": "30000.00"
     }
   ]
 }
 ```
 
-`type` adalah `SERVICE` atau `MATERIAL`. `quantity` menerima maksimum 9 digit integer dan 3 digit pecahan, harus lebih besar dari nol. `unitPrice` menerima maksimum 12 digit integer dan 2 digit pecahan, serta tidak boleh negatif. Kedua nilai harus berupa string desimal biasa tanpa eksponen. Backend menghitung subtotal dan total; klien tidak mengirim nilai tersebut. Nilai uang pada respons adalah string dua desimal. Total dihitung dari perkalian presisi penuh, sehingga dapat berbeda satu sen dari jumlah subtotal item yang masing-masing telah dibulatkan.
+`type` adalah `SERVICE` atau `MATERIAL`. Setiap baris hanya berisi `type`, `description` (trim, wajib, maksimum 240 karakter), dan `price`. Harga adalah string desimal nonnegatif tanpa eksponen, maksimum 21 digit integer dan 2 digit pecahan; `0` diperbolehkan. Respons mengembalikan `price` dua desimal. Backend menghitung `totalCost` dengan penjumlahan `price` menggunakan PostgreSQL NUMERIC, tanpa konversi float. Array kosong menghasilkan `0.00`. `quantity`, `unitPrice`, `subtotal`, dan total dari klien tidak diterima. Tidak ada lagi subtotal terpisah karena harga sudah merupakan biaya penuh satu baris.
+
+### Migrasi dari biaya berkuantitas
+
+Terapkan `drizzle/0005_cost_item_prices.sql` sebelum menjalankan API ini dan deploy frontend dengan kontrak yang sesuai. Migrasi mengganti `quantity`/`unit_price` dengan `price numeric(23,2)`, mempertahankan total historis dan tanggal audit. Pembulatan kumulatif berurutan `created_at, id` mengalokasikan selisih sen secara deterministik. Backup database sebelum penerapan; kuantitas dan harga satuan lama dihapus dan tidak dapat dipulihkan dari kolom baru.
 
 ## Upload bukti dan submit completion
 

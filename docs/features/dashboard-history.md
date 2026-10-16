@@ -55,7 +55,7 @@ Setiap item berisi `id`, `reportNumber`, `title`, `category`, `reportedAt`, `clo
 }
 ```
 
-Riwayat menyembunyikan identitas pembuat/pelapor, catatan internal Admin, nota, dan rincian biaya. `totalCost` adalah jumlah presisi penuh biaya laporan yang dibulatkan dua desimal.
+Riwayat menyembunyikan identitas pembuat/pelapor, catatan internal Admin, nota, dan rincian biaya. `totalCost` adalah penjumlahan langsung `price` item menggunakan PostgreSQL NUMERIC, disajikan sebagai string dua desimal. Dashboard `totalClosedCost` menjumlahkan harga item laporan Closed pada properti yang sama; tidak ada perkalian kuantitas atau pembulatan subtotal.
 
 ## Ringkasan dashboard
 
