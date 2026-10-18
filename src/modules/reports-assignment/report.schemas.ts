@@ -66,6 +66,7 @@ export const reportListSchema = z
       .optional(),
     category: z.enum(DAMAGE_CATEGORIES).optional(),
     priority: z.enum(PRIORITIES).optional(),
+    sort: z.enum(['latest', 'priority']).optional(),
     dateFrom: z.iso.date().optional(),
     dateTo: z.iso.date().optional(),
   })

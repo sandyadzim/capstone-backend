@@ -118,6 +118,13 @@ export class ReportsController {
     schema: { type: 'string', enum: [...PRIORITIES] },
   })
   @ApiQuery({
+    name: 'sort',
+    required: false,
+    description:
+      'latest: reportedAt descending, then id descending (default). priority: effective priority HIGH, MEDIUM, LOW, then unknown; oldest reportedAt first, then id ascending. Applied before pagination within actor scope.',
+    schema: { type: 'string', enum: ['latest', 'priority'], default: 'latest' },
+  })
+  @ApiQuery({
     name: 'dateFrom',
     required: false,
     description:

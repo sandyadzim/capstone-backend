@@ -48,20 +48,23 @@ Gunakan proxy `/api` menuju backend saat menjalankan Vite dan reverse proxy orig
 | `page`     | `1`     | integer positif dengan offset aman |
 | `pageSize` | `20`    | `1` sampai `100`                   |
 
-Respons berbentuk `{ "data": [...], "meta": { "page": 1, "pageSize": 20, "total": 0, "totalPages": 0 } }`. Urutan adalah `reportedAt` terbaru, lalu ID terbaru. Halaman di luar hasil mengembalikan `data: []`. Query yang tidak dikenal, berulang, atau invalid ditolak dengan `400 VALIDATION_ERROR`.
+Respons berbentuk `{ "data": [...], "meta": { "page": 1, "pageSize": 20, "total": 0, "totalPages": 0 } }`. Urutan default (`sort=latest` atau tanpa parameter) adalah `reportedAt` terbaru, lalu ID terbaru. Halaman di luar hasil mengembalikan `data: []`. Query yang tidak dikenal, berulang, atau invalid ditolak dengan `400 VALIDATION_ERROR`.
 
 Pencarian dan filter dapat digabungkan pada himpunan laporan yang boleh dilihat aktor:
 
-| Query         | Perilaku                                                                                                                                                                         |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `q`           | Potongan nomor laporan atau judul, case-insensitive; trim spasi tepi, maksimum 160 karakter. Kosong berarti tidak mencari.                                                       |
-| `status`      | Satu status laporan yang valid.                                                                                                                                                  |
-| `ongoingOnly` | Opsional, tepat `true`/`false`. `true` mencakup `REPORTED`, `VERIFIED`, `ASSIGNED`, `IN_PROGRESS`, dan `COMPLETED`; default/tanpa parameter atau `false` tidak membatasi status. |
-| `historyOnly` | Opsional, tepat `true`/`false`. `true` mencakup `CLOSED` dan `REJECTED`; default/tanpa parameter atau `false` tidak membatasi status.                                            |
-| `category`    | Satu kategori laporan yang valid.                                                                                                                                                |
-| `priority`    | `LOW`, `MEDIUM`, atau `HIGH`; memakai prioritas final, atau prioritas usulan selama laporan belum ditinjau.                                                                      |
-| `dateFrom`    | Tanggal `YYYY-MM-DD` inklusif berdasarkan `reportedAt` dalam kalender `Asia/Jakarta`.                                                                                            |
-| `dateTo`      | Tanggal `YYYY-MM-DD` inklusif berdasarkan `reportedAt` dalam kalender `Asia/Jakarta`.                                                                                            |
+| Query         | Perilaku                                                                                                                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `q`           | Potongan nomor laporan atau judul, case-insensitive; trim spasi tepi, maksimum 160 karakter. Kosong berarti tidak mencari.                                                                  |
+| `status`      | Satu status laporan yang valid.                                                                                                                                                             |
+| `ongoingOnly` | Opsional, tepat `true`/`false`. `true` mencakup `REPORTED`, `VERIFIED`, `ASSIGNED`, `IN_PROGRESS`, dan `COMPLETED`; default/tanpa parameter atau `false` tidak membatasi status.            |
+| `historyOnly` | Opsional, tepat `true`/`false`. `true` mencakup `CLOSED` dan `REJECTED`; default/tanpa parameter atau `false` tidak membatasi status.                                                       |
+| `category`    | Satu kategori laporan yang valid.                                                                                                                                                           |
+| `priority`    | `LOW`, `MEDIUM`, atau `HIGH`; memakai prioritas final, atau prioritas usulan selama laporan belum ditinjau.                                                                                 |
+| `sort`        | Opsional `latest` (default) atau `priority`. Priority mengurutkan prioritas efektif HIGH → MEDIUM → LOW → tanpa prioritas, lalu `reportedAt` terlama dan ID ascending sebagai pemecah seri. |
+| `dateFrom`    | Tanggal `YYYY-MM-DD` inklusif berdasarkan `reportedAt` dalam kalender `Asia/Jakarta`.                                                                                                       |
+| `dateTo`      | Tanggal `YYYY-MM-DD` inklusif berdasarkan `reportedAt` dalam kalender `Asia/Jakarta`.                                                                                                       |
+
+Sorting berlaku pada seluruh hasil yang cocok setelah pembatasan akses/filter dan sebelum pagination, bukan hanya isi halaman. Prioritas efektif memakai `finalPriority` bila tersedia, selain itu `proposedPriority`. Sorting tidak mengubah `meta.total` atau visibilitas per role.
 
 Filter berlaku dengan AND sebelum count/pagination; `ongoingOnly=true&historyOnly=true` atau `ongoingOnly=true&status=CLOSED` menghasilkan daftar kosong. Pencarian memperlakukan `%`, `_`, dan `\\` secara literal. Batas tanggal boleh dikirim sendiri; jika lengkap, `dateFrom` tidak boleh melewati `dateTo`.
 

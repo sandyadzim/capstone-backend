@@ -336,6 +336,15 @@ export class ReportsRepository {
           .from(damageReports)
           .innerJoin(units, eq(units.id, damageReports.unitId))
           .where(predicate);
+        const ordering =
+          input.sort === 'priority'
+            ? [
+                asc(sql`case coalesce(${damageReports.finalPriority}, ${damageReports.proposedPriority})
+                  when 'HIGH' then 0 when 'MEDIUM' then 1 when 'LOW' then 2 else 3 end`),
+                asc(damageReports.reportedAt),
+                asc(damageReports.id),
+              ]
+            : [desc(damageReports.reportedAt), desc(damageReports.id)];
         const rows = await transaction
           .select({
             id: damageReports.id,
@@ -355,7 +364,7 @@ export class ReportsRepository {
           .from(damageReports)
           .innerJoin(units, eq(units.id, damageReports.unitId))
           .where(predicate)
-          .orderBy(desc(damageReports.reportedAt), desc(damageReports.id))
+          .orderBy(...ordering)
           .limit(input.pageSize)
           .offset((input.page - 1) * input.pageSize);
         return {
