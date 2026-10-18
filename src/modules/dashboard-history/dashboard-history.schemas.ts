@@ -26,3 +26,10 @@ export const historyListSchema = z
 
 export type HistoryUnitIdInput = z.infer<typeof historyUnitIdSchema>;
 export type HistoryListInput = z.infer<typeof historyListSchema>;
+
+export const dashboardTrendsSchema = z
+  .object({
+    months: positiveQueryInteger.pipe(z.number().max(12)).optional().default(6),
+  })
+  .strict();
+export type DashboardTrendsInput = z.infer<typeof dashboardTrendsSchema>;

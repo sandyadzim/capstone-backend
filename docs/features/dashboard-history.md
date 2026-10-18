@@ -81,3 +81,30 @@ Respons berisi `totalUnits`, `totalReports`, `activeReports`, `inProgressReports
 ```
 
 Gunakan `401 UNAUTHORIZED` untuk sesi tidak valid dan `403 FORBIDDEN` untuk role yang tidak diizinkan. Body/query atau UUID invalid menghasilkan `400 VALIDATION_ERROR`.
+
+## Urutan antrean dashboard
+
+Dashboard Admin dapat memakai `GET /api/reports?status=REPORTED&sort=priority&page=1&pageSize=5`, juga untuk status VERIFIED dan COMPLETED. `sort=priority` mengurutkan seluruh hasil sesuai cakupan akses/filter berdasarkan prioritas final (fallback usulan), HIGH → MEDIUM → LOW → tanpa prioritas, lalu tanggal laporan terlama dan ID ascending sebelum pagination. Default tanpa sort tetap laporan terbaru. Count tetap berasal dari `meta.total`; sorting tidak menambah metrik summary atau menghitung waktu tunggu status. Lihat [panduan laporan](reports.md) untuk kontrak lengkap.
+
+## Tren bulanan dashboard
+
+`GET /api/dashboard/trends?months=6` hanya untuk Admin. Query `months` opsional, default 6, integer positif maksimal 12; query tambahan, berulang, kosong atau invalid ditolak dengan 400. Tidak ada perubahan pada endpoint summary.
+
+Respons berisi `generatedAt` (timestamp UTC saat snapshot diminta), `timeZone: "Asia/Jakarta"`, serta `months` berurutan dari bulan terlama ke bulan berjalan. Contoh satu baris:
+
+```json
+{
+  "month": "2026-10",
+  "reportedCount": 24,
+  "closedCount": 21,
+  "closedCost": "2800000.00"
+}
+```
+
+- `reportedCount` menghitung seluruh laporan berdasarkan `reportedAt`, termasuk laporan yang sekarang Closed/Rejected.
+- `closedCount` menghitung laporan berstatus Closed berdasarkan `closedAt`; bulan pelaporan awal boleh berada di luar rentang.
+- `closedCost` menjumlahkan `price` seluruh item biaya laporan Closed pada bulan `closedAt` tersebut. Nilai desimal tetap string dua digit pecahan; ini biaya pemeliharaan, bukan arus kas/pembayaran.
+- Batas bulan memakai kalender Asia/Jakarta, termasuk rollover tahun. Bulan berjalan dihitung sampai `generatedAt`; timestamp di masa depan tidak dihitung. Bulan tanpa aktivitas tetap dikirim dengan nol, termasuk `"0.00"` untuk biaya.
+- Semua angka dibatasi ke `INITIAL_PROPERTY_ID` dan mencakup laporan dari unit arsip. Join beberapa item biaya tidak menggandakan jumlah laporan Closed. Dua query agregat berjalan dalam satu transaksi baca `repeatable read`; frontend tidak perlu mengunduh seluruh laporan atau rincian biaya.
+
+Frontend memakai enam bulan, dua grouped/column charts, tooltip aksesibel tanpa tabel data. Response yang sama memberi kedua grafik snapshot/periode yang konsisten; summary serta daftar antrean tetap query terpisah. Query bulan pelaporan pada daftar laporan tidak boleh dipakai untuk menghitung penutupan/biaya bulanan.

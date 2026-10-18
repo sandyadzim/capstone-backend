@@ -42,45 +42,46 @@ Status HTTP dan `code` dapat dipakai untuk alur aplikasi. `message` ditujukan un
 
 ## Route aktif
 
-| Method   | Path                             | Akses                                                     | Sukses                                            |
-| -------- | -------------------------------- | --------------------------------------------------------- | ------------------------------------------------- |
-| `POST`   | `/api/auth/login`                | Publik; memerlukan origin tepercaya untuk request browser | `200`, aktor dikembalikan dan cookie sesi disetel |
-| `GET`    | `/api/auth/me`                   | Session cookie                                            | `200`, aktor aktif                                |
-| `POST`   | `/api/auth/logout`               | Publik; menghapus sesi saat tersedia                      | `204`                                             |
-| `GET`    | `/api/health`                    | Publik                                                    | `200`, `{ "status": "ok" }`                       |
-| `GET`    | `/api/property`                  | Semua role dengan sesi                                    | `200`, profil                                     |
-| `GET`    | `/api/resident/unit`             | RESIDENT; identitas dari sesi                             | `200`, `{ unit }` atau `{ unit: null }`           |
-| `PATCH`  | `/api/property`                  | ADMIN                                                     | `200`, profil diperbarui                          |
-| `GET`    | `/api/units`                     | ADMIN                                                     | `200`, `{ data, meta }`                           |
-| `POST`   | `/api/units`                     | ADMIN                                                     | `201`, unit                                       |
-| `GET`    | `/api/units/:id`                 | ADMIN                                                     | `200`, detail unit                                |
-| `PATCH`  | `/api/units/:id`                 | ADMIN                                                     | `200`, unit diperbarui                            |
-| `POST`   | `/api/units/:id/archive`         | ADMIN                                                     | `200`, unit diarsipkan                            |
-| `PUT`    | `/api/units/:id/resident`        | ADMIN                                                     | `200`, unit tujuan dengan penghuni                |
-| `DELETE` | `/api/units/:id/resident`        | ADMIN                                                     | `200`, unit setelah pelepasan                     |
-| `GET`    | `/api/accounts`                  | ADMIN                                                     | `200`, `{ data, meta }` daftar akun               |
-| `POST`   | `/api/accounts`                  | ADMIN                                                     | `201`, akun dibuat                                |
-| `GET`    | `/api/accounts/:id`              | ADMIN                                                     | `200`, detail akun                                |
-| `PATCH`  | `/api/accounts/:id`              | ADMIN                                                     | `200`, akun diperbarui                            |
-| `POST`   | `/api/accounts/:id/deactivate`   | ADMIN                                                     | `200`, akun dinonaktifkan                         |
-| `GET`    | `/api/reports`                   | Session; data dibatasi menurut role                       | `200`, `{ data, meta }` daftar laporan            |
-| `POST`   | `/api/reports`                   | ADMIN, RESIDENT                                           | `201`, laporan dibuat                             |
-| `GET`    | `/api/reports/:id`               | Session; laporan harus berada dalam cakupan aktor         | `200`, detail laporan                             |
-| `POST`   | `/api/reports/:id/verify`        | ADMIN                                                     | `200`, laporan terverifikasi                      |
-| `POST`   | `/api/reports/:id/reject`        | ADMIN                                                     | `200`, laporan ditolak                            |
-| `POST`   | `/api/reports/:id/assign`        | ADMIN                                                     | `200`, Teknisi ditugaskan                         |
-| `POST`   | `/api/reports/:id/start`         | TECHNICIAN; harus pemilik assignment                      | `200`, estimasi disimpan dan status `IN_PROGRESS` |
-| `PUT`    | `/api/reports/:id/result`        | TECHNICIAN; pemilik assignment, status `IN_PROGRESS`      | `200`, hasil tersimpan/diperbarui                 |
-| `PUT`    | `/api/reports/:id/cost-items`    | TECHNICIAN; pemilik assignment, status `IN_PROGRESS`      | `200`, seluruh baris biaya diganti                |
-| `POST`   | `/api/reports/:id/complete`      | TECHNICIAN; pemilik assignment, status `IN_PROGRESS`      | `200`, status menjadi `COMPLETED`                 |
-| `POST`   | `/api/reports/:id/close`         | ADMIN; status `COMPLETED`, hasil dan nota tersedia        | `200`, status menjadi `CLOSED`                    |
-| `GET`    | `/api/units/:id/history`         | ADMIN; properti Phase 1, termasuk arsip                   | `200`, `{ data, meta }` laporan `CLOSED`          |
-| `GET`    | `/api/units/:id/history`         | RESIDENT; unit aktif yang terhubung ke akunnya            | `200`, `{ data, meta }` tanpa identitas pelapor   |
-| `GET`    | `/api/dashboard/summary`         | ADMIN                                                     | `200`, enam metrik dashboard                      |
-| `POST`   | `/api/reports/:id/damage-photos` | ADMIN atau RESIDENT sesuai akses laporan                  | `201`, URL dan relasi foto kerusakan tersimpan    |
-| `POST`   | `/api/reports/:id/repair-photos` | TECHNICIAN pemilik assignment, laporan `IN_PROGRESS`      | `201`, URL dan relasi foto hasil tersimpan        |
-| `PUT`    | `/api/reports/:id/receipt`       | TECHNICIAN pemilik assignment, laporan `IN_PROGRESS`      | `200`, nota dipasang atau diganti                 |
-| `PUT`    | `/api/property/logo`             | ADMIN                                                     | `200`, profil dengan URL logo                     |
+| Method   | Path                             | Akses                                                     | Sukses                                                       |
+| -------- | -------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------ |
+| `POST`   | `/api/auth/login`                | Publik; memerlukan origin tepercaya untuk request browser | `200`, aktor dikembalikan dan cookie sesi disetel            |
+| `GET`    | `/api/auth/me`                   | Session cookie                                            | `200`, aktor aktif                                           |
+| `POST`   | `/api/auth/logout`               | Publik; menghapus sesi saat tersedia                      | `204`                                                        |
+| `GET`    | `/api/health`                    | Publik                                                    | `200`, `{ "status": "ok" }`                                  |
+| `GET`    | `/api/property`                  | Semua role dengan sesi                                    | `200`, profil                                                |
+| `GET`    | `/api/resident/unit`             | RESIDENT; identitas dari sesi                             | `200`, `{ unit }` atau `{ unit: null }`                      |
+| `PATCH`  | `/api/property`                  | ADMIN                                                     | `200`, profil diperbarui                                     |
+| `GET`    | `/api/units`                     | ADMIN                                                     | `200`, `{ data, meta }`                                      |
+| `POST`   | `/api/units`                     | ADMIN                                                     | `201`, unit                                                  |
+| `GET`    | `/api/units/:id`                 | ADMIN                                                     | `200`, detail unit                                           |
+| `PATCH`  | `/api/units/:id`                 | ADMIN                                                     | `200`, unit diperbarui                                       |
+| `POST`   | `/api/units/:id/archive`         | ADMIN                                                     | `200`, unit diarsipkan                                       |
+| `PUT`    | `/api/units/:id/resident`        | ADMIN                                                     | `200`, unit tujuan dengan penghuni                           |
+| `DELETE` | `/api/units/:id/resident`        | ADMIN                                                     | `200`, unit setelah pelepasan                                |
+| `GET`    | `/api/accounts`                  | ADMIN                                                     | `200`, `{ data, meta }` daftar akun                          |
+| `POST`   | `/api/accounts`                  | ADMIN                                                     | `201`, akun dibuat                                           |
+| `GET`    | `/api/accounts/:id`              | ADMIN                                                     | `200`, detail akun                                           |
+| `PATCH`  | `/api/accounts/:id`              | ADMIN                                                     | `200`, akun diperbarui                                       |
+| `POST`   | `/api/accounts/:id/deactivate`   | ADMIN                                                     | `200`, akun dinonaktifkan                                    |
+| `GET`    | `/api/reports`                   | Session; data dibatasi menurut role                       | `200`, `{ data, meta }` daftar laporan                       |
+| `POST`   | `/api/reports`                   | ADMIN, RESIDENT                                           | `201`, laporan dibuat                                        |
+| `GET`    | `/api/reports/:id`               | Session; laporan harus berada dalam cakupan aktor         | `200`, detail laporan                                        |
+| `POST`   | `/api/reports/:id/verify`        | ADMIN                                                     | `200`, laporan terverifikasi                                 |
+| `POST`   | `/api/reports/:id/reject`        | ADMIN                                                     | `200`, laporan ditolak                                       |
+| `POST`   | `/api/reports/:id/assign`        | ADMIN                                                     | `200`, Teknisi ditugaskan                                    |
+| `POST`   | `/api/reports/:id/start`         | TECHNICIAN; harus pemilik assignment                      | `200`, estimasi disimpan dan status `IN_PROGRESS`            |
+| `PUT`    | `/api/reports/:id/result`        | TECHNICIAN; pemilik assignment, status `IN_PROGRESS`      | `200`, hasil tersimpan/diperbarui                            |
+| `PUT`    | `/api/reports/:id/cost-items`    | TECHNICIAN; pemilik assignment, status `IN_PROGRESS`      | `200`, seluruh baris biaya diganti                           |
+| `POST`   | `/api/reports/:id/complete`      | TECHNICIAN; pemilik assignment, status `IN_PROGRESS`      | `200`, status menjadi `COMPLETED`                            |
+| `POST`   | `/api/reports/:id/close`         | ADMIN; status `COMPLETED`, hasil dan nota tersedia        | `200`, status menjadi `CLOSED`                               |
+| `GET`    | `/api/units/:id/history`         | ADMIN; properti Phase 1, termasuk arsip                   | `200`, `{ data, meta }` laporan `CLOSED`                     |
+| `GET`    | `/api/units/:id/history`         | RESIDENT; unit aktif yang terhubung ke akunnya            | `200`, `{ data, meta }` tanpa identitas pelapor              |
+| `GET`    | `/api/dashboard/summary`         | ADMIN                                                     | `200`, enam metrik dashboard                                 |
+| `GET`    | `/api/dashboard/trends`          | ADMIN                                                     | `200`, agregat bulanan laporan masuk/Closed dan biaya Closed |
+| `POST`   | `/api/reports/:id/damage-photos` | ADMIN atau RESIDENT sesuai akses laporan                  | `201`, URL dan relasi foto kerusakan tersimpan               |
+| `POST`   | `/api/reports/:id/repair-photos` | TECHNICIAN pemilik assignment, laporan `IN_PROGRESS`      | `201`, URL dan relasi foto hasil tersimpan                   |
+| `PUT`    | `/api/reports/:id/receipt`       | TECHNICIAN pemilik assignment, laporan `IN_PROGRESS`      | `200`, nota dipasang atau diganti                            |
+| `PUT`    | `/api/property/logo`             | ADMIN                                                     | `200`, profil dengan URL logo                                |
 
 ## Panduan integrasi
 
@@ -122,11 +123,11 @@ Daftar unit, akun, dan laporan mengembalikan `{ data, meta: { page, pageSize, to
 
 Filter dan cakupan akses diterapkan sebelum count/pagination. Pencarian memakai substring case-insensitive, trim, dengan `%`, `_`, dan `\\` sebagai karakter literal; kosong berarti tanpa pencarian. Filter berbeda digabung dengan AND.
 
-| Daftar  | Filter                                                                                                | Urutan                       |
-| ------- | ----------------------------------------------------------------------------------------------------- | ---------------------------- |
-| Unit    | `q` (maks. 40), `displayStatus`, `isArchived` (default `false`)                                       | `createdAt DESC`, `id DESC`  |
-| Akun    | `q` (maks. 254), `role`, `isActive`, `unassignedOnly`                                                 | `createdAt DESC`, `id DESC`  |
-| Laporan | `q` (maks. 160), `status`, `ongoingOnly`, `historyOnly`, `category`, `priority`, `dateFrom`, `dateTo` | `reportedAt DESC`, `id DESC` |
+| Daftar  | Filter                                                                                                        | Urutan                                                                                                                                                              |
+| ------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit    | `q` (maks. 40), `displayStatus`, `isArchived` (default `false`)                                               | `createdAt DESC`, `id DESC`                                                                                                                                         |
+| Akun    | `q` (maks. 254), `role`, `isActive`, `unassignedOnly`                                                         | `createdAt DESC`, `id DESC`                                                                                                                                         |
+| Laporan | `q` (maks. 160), `status`, `ongoingOnly`, `historyOnly`, `category`, `priority`, `sort`, `dateFrom`, `dateTo` | Default/`latest`: `reportedAt DESC`, `id DESC`; `priority`: prioritas efektif HIGH → MEDIUM → LOW → tanpa prioritas, `reportedAt ASC`, `id ASC`, sebelum pagination |
 
 Filter boolean query menerima tepat string `true`/`false`. Detail nilai, prioritas, tanggal WIB, dan kombinasi filter ada di panduan fitur di atas.
 

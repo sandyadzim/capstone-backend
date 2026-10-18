@@ -152,6 +152,76 @@ export class DashboardHistoryRepository {
     return unit;
   }
 
+  async dashboardTrends(now: Date, monthCount: number) {
+    const { start: currentStart } = jakartaCalendarMonthBounds(now);
+    // Shift from Jakarta month-start in local calendar space, including year rollover.
+    const localStart = new Date(
+      currentStart.getTime() + UTC_OFFSET_JAKARTA_MINUTES * 60_000,
+    );
+    const months = Array.from({ length: monthCount }, (_, index) => {
+      const date = new Date(
+        Date.UTC(
+          localStart.getUTCFullYear(),
+          localStart.getUTCMonth() - monthCount + 1 + index,
+          1,
+        ),
+      );
+      return date.toISOString().slice(0, 7);
+    });
+    const start = new Date(`${months[0]}-01T00:00:00+07:00`);
+    const reportedMonth = sql<string>`to_char(${damageReports.reportedAt} AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM')`;
+    const closedMonth = sql<string>`to_char(${damageReports.closedAt} AT TIME ZONE 'Asia/Jakarta', 'YYYY-MM')`;
+    return this.database.db.transaction(
+      async (transaction) => {
+        const reported = await transaction
+          .select({ month: reportedMonth, total: count() })
+          .from(damageReports)
+          .innerJoin(units, eq(units.id, damageReports.unitId))
+          .where(
+            and(
+              eq(units.propertyId, INITIAL_PROPERTY_ID),
+              sql`${damageReports.reportedAt} >= ${start.toISOString()}::timestamptz`,
+              sql`${damageReports.reportedAt} <= ${now.toISOString()}::timestamptz`,
+            ),
+          )
+          .groupBy(reportedMonth);
+        const closed = await transaction
+          .select({
+            month: closedMonth,
+            total: sql<number>`count(distinct ${damageReports.id})::int`,
+            cost: sql<string>`coalesce(sum(${costItems.price}), 0)::numeric(1000, 2)::text`,
+          })
+          .from(damageReports)
+          .innerJoin(units, eq(units.id, damageReports.unitId))
+          .leftJoin(costItems, eq(costItems.reportId, damageReports.id))
+          .where(
+            and(
+              eq(units.propertyId, INITIAL_PROPERTY_ID),
+              eq(damageReports.status, 'CLOSED'),
+              sql`${damageReports.closedAt} >= ${start.toISOString()}::timestamptz`,
+              sql`${damageReports.closedAt} <= ${now.toISOString()}::timestamptz`,
+            ),
+          )
+          .groupBy(closedMonth);
+        const reportedByMonth = new Map(
+          reported.map((row) => [row.month, row.total]),
+        );
+        const closedByMonth = new Map(closed.map((row) => [row.month, row]));
+        return {
+          generatedAt: now,
+          timeZone: 'Asia/Jakarta' as const,
+          months: months.map((month) => ({
+            month,
+            reportedCount: reportedByMonth.get(month) ?? 0,
+            closedCount: closedByMonth.get(month)?.total ?? 0,
+            closedCost: closedByMonth.get(month)?.cost ?? '0.00',
+          })),
+        };
+      },
+      { isolationLevel: 'repeatable read', accessMode: 'read only' },
+    );
+  }
+
   async dashboardSummary(now: Date) {
     const { start, end } = jakartaCalendarMonthBounds(now);
     return this.database.db.transaction(

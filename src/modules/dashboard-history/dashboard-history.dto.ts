@@ -49,3 +49,23 @@ export class DashboardSummaryResponseDto {
   @ApiProperty({ type: 'integer', minimum: 0 }) closedReportsThisMonth!: number;
   @ApiProperty({ type: String, example: '0.00' }) totalClosedCost!: string;
 }
+
+export class DashboardTrendMonthDto {
+  @ApiProperty({
+    type: String,
+    pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$',
+    example: '2026-10',
+  })
+  month!: string;
+  @ApiProperty({ type: 'integer', minimum: 0 }) reportedCount!: number;
+  @ApiProperty({ type: 'integer', minimum: 0 }) closedCount!: number;
+  @ApiProperty({ type: String, example: '1250000.50' }) closedCost!: string;
+}
+
+export class DashboardTrendsResponseDto {
+  @ApiProperty({ type: String, format: 'date-time' }) generatedAt!: Date;
+  @ApiProperty({ type: String, enum: ['Asia/Jakarta'] })
+  timeZone!: 'Asia/Jakarta';
+  @ApiProperty({ type: [DashboardTrendMonthDto], minItems: 1, maxItems: 12 })
+  months!: DashboardTrendMonthDto[];
+}
